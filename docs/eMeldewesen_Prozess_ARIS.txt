@@ -1,0 +1,688 @@
+================================================================================
+eMeldewesen – Prozess ARIS (Textversion)
+================================================================================
+Quelle:     eMeldewesen Prozess ARIS.pdf
+Extrahiert: automatisch aus BPMN-Grafik (1 Seite)
+Hinweis:    Reihenfolge und Verzweigungen entsprechen dem Diagramm nur
+            annähernd; für den exakten Ablauf ist die ARIS-Grafik maßgeblich.
+
+--------------------------------------------------------------------------------
+Titel / Metadaten (aus dem Diagramm)
+--------------------------------------------------------------------------------
+eMeldewesen (BPMN FHH (Operativer Prozess+); zuletzt geändert von tuth am
+13/03/2026 15:15:12)
+
+PDF-Titel (Export): Grafik als PDF exportieren (neu)
+
+--------------------------------------------------------------------------------
+Anmerkungen im Prozessmodell (Hinweistexte)
+--------------------------------------------------------------------------------
+Während der Erfassung sollte eine Geschäftsvorgangsnummer pro 4W generiert
+werden. Für die verbundenen Sachverhalte, d. h., wenn mehrere Gefangene
+involviert sind, könnte diese Sachverhalte ggf. mit ".x" gekennzeichnet werden.
+
+Der Prozess wird für weitere Zweiterfassende unabhängig vom ursprünglichen
+Zweiterfassenden wiederholt.
+
+Unter Anpassungen wurde ebenfalls die Dokumentation und Ablage der Ergebnisse
+einer Anhörung fallen.
+
+--------------------------------------------------------------------------------
+Rollen, Organisationseinheiten und Systeme (Swimlanes / Knoten)
+--------------------------------------------------------------------------------
+- Allgemeiner Vollzugsdienst (AVD)
+- Anstaltsleitung (AL)
+- Analog
+- Auswertung
+- AVD
+- BASIS-Web
+- beBPo
+- Begutachtung
+- DB Bedienstete
+- DB eMeldewesen
+- DB Experte
+- DWH
+- Eldorado
+- eMeldewesen
+- Ersterfassung
+- Expertise
+- Fachaufsicht
+- JVAen
+- Kammer
+- Leitung
+- Planer
+- Qualitätssicherung
+- Qualitätssicherung Erstinstanz
+- Qualitätssicherung Zweitinstanz
+- Revier
+- Revision
+- Station
+- VAL (Vollzugsabteilungsleitung)
+- Zweiterfassung
+- (e)GPA / eGPA
+
+--------------------------------------------------------------------------------
+Aktivitäten (Aufgaben)
+--------------------------------------------------------------------------------
+Abschluss des Prozesses
+Anfrage Gutachten
+Anhörungen durchführen, falls nötig
+Anlagen
+Anforderung Expertise
+Anpassungen der Erfassung sind eingegangen
+Anpassungen der Erfassung wurden angefragt
+Aufgabe Übernahme? / Übernahme Aufgabe
+Aussage erstellen
+Aussagen anpassen
+Bearbeitungsanfrage
+Bearbeitung abgeschlossen
+Bearbeitung ist abgeschlossen
+Begutachtung
+Bestätigung Beteiligung
+Bestätigung der Bearbeitung
+Bestätigung der Meldepflicht
+Beteiligte hinzuziehen
+Beobachtungsbogen (Freitext) wird erstellt
+Beweismittel und Dokumente hochladen
+Beweismittel sichern / digitalisieren
+Beweismittelbegutachtung
+Datenauszug
+Datenexport
+Den Meldepflicht prüfen
+Die Beschreibung anpassen
+Die Richtigkeit und Vollständigkeit prüfen
+Eckdaten (Wer, Wann, Wo, Was) erfassen
+Eilmeldung
+Eine Beschreibung des Ereignisses erstellen
+Ende der Gutachtenanfrage
+Erstellung Meldung
+Erfassung Gutachten
+Erfassung ist abgeschlossen
+Erfassungsfrist hat begonnen
+Experte Gutachten einholen (Standard Abfrage)
+Expertengutachten wurde angefragt
+Fragen / Anmerkungen an Erfassende schicken
+Gefangenen Stammdaten werden abgerufen
+Geschäftsvorgangsnummer generieren
+Gutachten ist erstellt und versendet
+Meldungspflichtmitteilung
+Prüfung der Meldungsfristen
+Prüfung Richtigkeit und Vollständigkeit
+QS wird gestoppt
+Revision für Gutachten anfragen
+Revier für Gutachten anfragen
+Stellungnahme zu Gutachten
+Stellungnahmen zu Anhörungen und Zeugenaussagen
+Verfügung an die eGPA
+Verfügung an die Generalakte
+Versand an ERV oder direktes Hochladen
+XJustiz-Strukturdatei
+Mitteilung (PDF)
+ERV-Nachricht
+Übermittlung an relevanten Empfänger
+2. Aussage anpassen
+2. Prüfung der Richtigkeit und Vollständigkeit
+
+--------------------------------------------------------------------------------
+Entscheidungen / Gateways (Ja–Nein-Verzweigungen)
+--------------------------------------------------------------------------------
+Anpassungen oder Ergänzungen nötig
+Anpassungen und Ergänzungen nötig
+Aufgabe wurde übernommen / Aufgabe wurde nicht übernommen
+Aufforderung kam von AL
+Aufforderung kam von VL / VAL
+Bestätigung der Beteiligung liegt vor? / liegt nicht vor
+Besteht eine Meldepflicht?
+Die Anfrage kam von AL
+Eilmeldung nötig / Eilmeldung nicht nötig
+Ereignis mit Gefangenenbezug / Ereignis mit keinen Gefangenenbezug /
+Ereignis mit keinem Gefangenenbezug
+Ja / Nein
+Keine weitere Informationen nötig
+Meldepflichtig / Nicht meldepflichtig
+Meldung nötig?
+Meldungsfrist < 48 Stunden
+QS ist abgeschlossen und eine Meldepflicht besteht
+Rückmeldung Gutachter ist eingegangen
+Weitere Beteiligte nötig für die Erfassung?
+Weitere Beteiligung nötig / Weitere Beteiligung nicht nötig
+Weitere Informationen von der Erfassenden nötig
+Zurück an der 1. QS-Instanz mit Fragen
+Fragen hinsichtlich der Ersterfassung
+Fragen hinsichtlich der Zweiterfassung
+Von wem kam die Aufforderung zu Stellungnahme?
+An Meldende zur Bearbeitung weiterleiten
+bezüglich Gesundheitszustand Beteiligter
+bezüglich Sachgegenstand
+
+--------------------------------------------------------------------------------
+Ereignisse
+--------------------------------------------------------------------------------
+Endereignis
+Nachricht
+
+--------------------------------------------------------------------------------
+Vollständige Roh-Extraktion (Diagramm-Reihenfolge, unbereinigt)
+--------------------------------------------------------------------------------
+eMeldewesen (BPMN FHH (Operativer Prozess+); zuletzt geändert von tuth am 13/03/2026 15:15:12)
+Expertise
+DB eMeldewesen
+Qualitätssicherung Erstinstanz
+Qualitätssicherung Zweitinstanz
+DB eMeldewesen
+DB eMeldewesen
+Ersterfassung
+DB eMeldewesen
+Zweiterfassung
+DB eMeldewesen
+DB eMeldewesen
+Während der Erfassung sollte eine
+Geschäftsvorgangsnummer pro 4W generiert werden. Für
+die verbundenen Sachverhalte, d.h., wenn mehrere
+Gefangenen involviert sind, könnte diese Sachverhalte ggf.
+mit ".x" gekennzeichnet werden.
+Der Prozess wird für weitere Zweiterfassende unabhängig vom
+ursprünglichen Zweiterfassenden wiederholt.
+Unter Anpassungen wurde
+ebenfalls die Dokumentation
+und Ablage der Ergebnissen
+einer Anhörung fallen.
+Meldung
+XJustiz-Strukturdatei
+Mitteilung (PDF)
+ERV-Nachricht
+DB eMeldewesen
+Anlagen
+Beweismittel und
+Dokumente
+hochladen
+Stellungnahmen
+zu Anhörungen
+und...
+Stellungnahme
+zu Gutachten
+Erstellung
+Meldung
+Beweismittelbe-
+gutachtung
+Erfassungsfrist hat begonnen
+Eckdaten (Wer,
+Wann, Wo, Was)
+erfassen Aussage erstellen
+Aussage erstellen
+Beweismittel und
+Dokumente
+hochladen
+Weitere Beteiligte nötig für die Erfassung?
+Beweismittel und
+Dokumente
+hochladen
+Geschäftsvorgangsnumme
+r generieren
+Weitere Beteiligte nötig für die Erfassung?
+Bestätigung der Beteiligung liegt vor?
+Bestätigung
+Beteiligung
+Beteiligte
+hinzuziehen
+Beteiligte
+hinzuziehen
+Die Richtigkeit und
+Vollständigkeit
+prüfen
+Während der Erfassung sollte eine
+Geschäftsvorgangsnummer pro 4W generiert werden. Für
+die verbundenen Sachverhalte, d.h., wenn mehrere
+Gefangenen involviert sind, könnte diese Sachverhalte ggf.
+mit ".x" gekennzeichnet werden.
+Der Prozess wird für weitere Zweiterfassende unabhängig vom
+ursprünglichen Zweiterfassenden wiederholt.
+JVAen
+Revier
+Analog
+Kammer
+Übernahme Aufgabe
+Aufgabe Übernahme?
+Erfassung Gutachten
+Beweismittel und
+Dokumente
+hochladen
+Von wem kam die Aufforderung zu Stellungnahme?
+Versand an ERV
+oder direktes
+Hochladen
+eMeldewesen
+Übernahme Aufgabe
+Aufgabe Übernahme?
+Erfassung Gutachten
+Beweismittel und
+Dokumente
+hochladen
+Von wem kam die Aufforderung zu Stellungnahme?
+Versand an ERV
+oder direktes
+Hochladen
+Die Beschreibung
+anpassen
+Anlagen
+Beweismittel und
+Dokumente hochladen
+Anlagen
+Den Meldepflicht
+prüfen
+Besteht eine Meldepflicht?
+Bestätigung der
+Meldepflicht
+Anlagen
+Anlagen
+2. Prüfung der
+Richtigkeit und
+Vollständigkeit
+Den Meldepflicht
+prüfen
+Anlagen
+Die Beschreibung
+anpassen
+Beweismittel und
+Dokumente
+hochladen
+Übernahme Aufgabe
+Aufgabe Übernahme?
+Erfassung Gutachten
+Beweismittel und
+Dokumente
+hochladen
+Prüfung der
+Meldungsfristen
+Meldungsfrist < 48 Stunden
+Erstellung
+Eilmeldung
+Übermittlung an relevanten
+Empfänger
+Meldung nötig?
+Prüfung Richtigkeit
+und Vollständigkeit
+Die Beschreibung
+anpassen
+ERV-Nachricht
+DB eMeldewesen
+Übermittlung an
+relevanten
+Empfänger
+XJustiz-Strukturdatei
+Mitteilung (PDF)
+DB eMeldewesen
+DB eMeldewesen
+Eine Beschreibung
+des Ereignisses
+erstellen
+Weitere Informationen von der Erfassenden nötig
+Keine weitere Informationen nötig
+Anpassungen oder Ergänzungen nötig
+Nicht meldepflichtig
+Meldepflichtig
+Aufgabe wurde übernommen
+Anpassungen und Ergänzungen nötig
+Ja
+Eilmeldung nötig
+Eilmeldung nicht nötig
+Nein
+Aussagen anpassen
+Fragen hinsichtlich der Ersterfassung
+2. Aussage anpassen
+Fragen hinsichtlich der Zweiterfassung
+DB Bedienstete
+Von wem kam die Aufforderung zu Stellungnahme?
+Aufforderung kam von AL
+Aufforderung kam von VL / VAL
+Erfassung ist abgeschlossen
+Zurück an der 1. QS-Instanz mit Fragen
+Weitere Beteiligung nicht nötig
+QS ist abgeschlossen und eine Meldepflicht besteht
+Meldepflichtig
+Weitere Beteiligung nötig
+Weitere Beteiligung nötig
+Ja
+Bestätigung der Beteiligung liegt nicht vor
+Weitere Beteiligung nicht nötig
+DB Bedienstete
+DB eMeldewesen
+Besteht eine Meldepflicht?
+Nicht meldepflichtig
+Meldepflichtig
+DB Experte
+Versand an ERV
+oder direktes
+Hochladen
+Experte Gutachten einholen
+(Standard Abfrage)
+Anforderung Expertise
+Aufgabe wurde nicht übernommen
+Ersterfassung
+Qualitätssicherung
+Meldung
+Planer
+AVD
+Analog
+BASIS-Web
+eMeldewesen
+Analog
+eMeldewesen
+Vollzugsabteilungsleitung (VAL)
+eMeldewesen
+Analog
+eMeldewesen
+Analog
+Anstaltsleitung (AL)
+BASIS-Web
+beBPo
+eMeldewesen
+Analog
+Auswertung
+Fachaufsicht
+Analog
+BASIS-Web
+DWH
+Erfassungsfrist hat begonnen
+Eckdaten (Wer, Wann, Wo,
+Was) erfassen Aussage erstellen
+eMeldewesen
+Beweismittel und
+Dokumente hochladen
+Geschäftsvorgangsnumme
+r generieren
+Begutachtung
+Revision
+Weitere Beteiligte nötig für die Erfassung?
+Revier
+Beteiligte
+hinzuziehen
+eMeldewesen
+eMeldewesen
+BASIS-Web
+Analog
+eMeldewesen
+Analog
+Gefangenen Stammdaten
+werden abgerufen
+Aussage erstellen
+Beweismittel und
+Dokumente
+hochladen
+Weitere Beteiligte nötig für die Erfassung?
+Bestätigung der Beteiligung liegt vor?
+Bestätigung
+Beteiligung
+Beteiligte
+hinzuziehen
+2. Aussage anpassen
+Weitere Beteiligung nötig
+Beobachtungsbogen
+(Freitext) wird
+erstellt
+Ja
+Beweismittel sichern
+/ digitalisieren
+Beweismittel sichern
+/ digitalisieren
+Unter Anpassungen wurde
+ebenfalls die Dokumentation
+und Ablage der Ergebnissen
+einer Anhörung fallen.
+Die Richtigkeit und
+Vollständigkeit prüfen
+Die Beschreibung
+anpassen
+Beweismittel und
+Dokumente hochladen
+Den Meldepflicht
+prüfen
+Besteht eine
+Meldepflicht? Eine Beschreibung des
+Ereignisses erstellen
+Erfassung ist abgeschlossen
+Weitere Beteiligung nicht nötig
+Weitere Beteiligung nicht nötig
+Aussagen anpassen
+Weitere Beteiligung nötig
+Meldepflichtig
+Nicht meldepflichtig
+Bearbeitungsanfrage
+Bestätigung der Bearbeitung
+Fragen /
+Anmerkungen an
+Erfassende schicken
+Bearbeitung abgeschlossen
+Bestätigung der Bearbeitung
+Bearbeitung abgeschlossen
+Die Richtigkeit und
+Vollständigkeit prüfen
+Den Meldepflicht
+prüfen
+Die Beschreibung
+anpassen
+Beweismittel und
+Dokumente
+hochladen
+Anpassungen und Ergänzungen nötig
+Besteht eine Meldepflicht?
+Nicht meldepflichtig
+Meldepflichtig
+Experte Gutachten einholen
+(Standard Abfrage)
+Anforderung Expertise
+Anpassungen der Erfassung wurden angefragt
+Keine weitere Informationen nötig
+Anpassungen oder Ergänzungen nötig
+Anhörungen durchführen,
+falls nötig
+Beweismittel sichern /
+digitalisieren
+Anpassungen der Erfassung sind eingegangen
+QS wird gestoppt
+Anhörungen durchführen,
+falls nötig
+Beweismittel sichern /
+digitalisieren
+Erfassung ist abgeschlossen
+An Meldende zur Bearbeitung
+weiterleiten
+An Meldende zur Bearbeitung
+weiterleiten
+Meldungspflichtmitteilung
+DB eMeldewesen
+DB eMeldewesen
+Datenexport
+XJustiz-Strukturdatei
+Mitteilung (PDF)
+ERV-Nachricht
+DB eMeldewesen
+Anlagen
+Beweismittel und
+Dokumente
+hochladen
+Stellungnahmen
+zu Anhörungen
+und...
+Stellungnahme
+zu Gutachten
+Erstellung
+Meldung
+Beweismittelbe-
+gutachtung
+Bestätigung der
+Meldepflicht
+Anlagen
+2. Prüfung der
+Richtigkeit und
+Vollständigkeit
+Den Meldepflicht
+prüfen
+Anlagen
+Die Beschreibung
+anpassen
+Beweismittel und
+Dokumente
+hochladen
+Übernahme Aufgabe
+Aufgabe Übernahme?
+Erfassung Gutachten
+Beweismittel und
+Dokumente
+hochladen
+Abschluss des Prozesses
+eGPA
+Prüfung der
+Meldungsfristen
+Meldungsfrist < 48 Stunden
+Erstellung
+Eilmeldung
+Übermittlung an relevanten
+Empfänger
+Meldung nötig?
+Prüfung Richtigkeit
+und Vollständigkeit
+Die Beschreibung
+anpassen
+ERV-Nachricht
+DB eMeldewesen
+Übermittlung an
+relevanten
+Empfänger
+XJustiz-Strukturdatei
+Mitteilung (PDF)
+DB eMeldewesen
+Datenauszug
+Verfügung an die
+eGPA
+Verfügung an die
+Generalakte
+Generalakte
+Aufgabe wurde übernommen
+Ereignis mit Gefangenenbezug
+Ereignis mit keinen Gefangenenbezug
+Anpassungen und Ergänzungen nötig
+Ja
+Eilmeldung nötig
+Eilmeldung nicht nötig
+Nein
+Von wem kam die Aufforderung zu Stellungnahme?
+Aufforderung kam von AL
+QS ist abgeschlossen und eine Meldepflicht besteht
+Besteht eine Meldepflicht?
+Nicht meldepflichtig
+Meldepflichtig
+Bearbeitung ist abgeschlossen
+DB Experte
+Versand an ERV
+oder direktes
+Hochladen
+Experte Gutachten einholen
+(Standard Abfrage)
+Anforderung Expertise
+Aufgabe wurde nicht übernommen
+Bearbeitung ist abgeschlossen
+Datenexport
+Expertengutachten wurde angefragt
+Eldorado
+Verfügung an die
+Generalakte
+(e)GPA
+Verfügung an die
+eGPA
+Abschluss des Prozesses
+Datenauszug
+Keine weitere Informationen nötig
+Ereignis mit keinem Gefangenenbezug
+Ereignis mit Gefangenenbezug
+Endereignis
+Expertengutachten wurde angefragt
+Anfrage Gutachten
+Revision für
+Gutachten anfragen
+Anfrage Gutachten
+Revier für Gutachten
+anfragen bezüglich Gesundheitszustand Beteiligter
+bezüglich Sachgegenstand
+Ende der Gutachtenanfrage
+Nachricht
+Rückmeldung Gutachter ist eingegangen
+Anlagen
+Übernahme Aufgabe
+Aufgabe Übernahme?
+Erfassung Gutachten
+Beweismittel und
+Dokumente
+hochladen
+Aufgabe wurde übernommen
+Von wem kam die Aufforderung zu Stellungnahme?
+Versand an ERV
+oder direktes
+Hochladen
+Aufgabe wurde nicht übernommen
+Übermittlung an
+relevanten
+Empfänger
+ERV-Nachricht
+Die Anfrage kam von AL
+Stellungnahmen zu
+Anhörungen und
+Zeugenaussagen
+Stellungnahme
+zu Gutachten
+Erstellung
+Meldung
+Beweismittelbe-
+gutachtung
+XJustiz-StrukturdateiMitteilung (PDF)
+Gutachten ist
+erstellt und versendet
+Leitung
+Anstaltsleitung (AL)
+Analog
+Analog
+(e)GPA
+Station
+Allgemeiner Vollzugsdienst (AVD)
+eMeldewesen
+DB eMeldewesen
+DB eMeldewesen
+Erfassungsfrist hat begonnen
+Eckdaten (Wer, Wann,
+Wo, Was) erfassen Aussage erstellen
+Aussage erstellen
+Beweismittel und
+Dokumente
+hochladen
+Weitere Beteiligte nötig für die Erfassung?
+Beweismittel und
+Dokumente hochladen
+Geschäftsvorgangsnumme
+r generieren
+Weitere Beteiligte nötig für die Erfassung?
+Bestätigung der Beteiligung liegt vor?
+Bestätigung
+Beteiligung
+Beteiligte
+hinzuziehen
+Beteiligte
+hinzuziehen
+Anlagen
+DB eMeldewesen
+Aussagen anpassen
+2. Aussage anpassen
+Weitere Beteiligung nötig
+Weitere Beteiligung nötig
+Ja
+DB Bedienstete
+VAL
+Analog
+eMeldewesen
+BASIS-Web
+Aufgabe wurde übernommen
+Aufgabe wurde nicht übernommen
+Aufgabe wurde übernommen
+Aufgabe wurde nicht übernommen
+eMeldewesen
+eMeldewesen
+Analog

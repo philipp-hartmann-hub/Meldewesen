@@ -1,0 +1,8 @@
+{
+  "name": "a2-uebergabe-docx",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "docx": "^9.5.0"
+  }
+}

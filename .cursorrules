@@ -1,0 +1,332 @@
+# .cursorrules – Prototyp A2: eMeldewesen
+# HEUREKA 2.0 | FHH Hamburg Justiz | Stand: Mai 2026
+# Version 2.0 – React + Node.js + Prisma + Docker
+
+---
+
+## MASSGEBLICHKEIT
+
+Diese Datei gilt für **dieses Repository** und steht über allen älteren Team-Dokumenten,
+soweit Design-Tokens, Rollenlabels, Hub-IA oder Meldewesen-Grenzen betroffen sind.
+Bei Widerspruch gilt **diese Datei**.
+
+---
+
+## 1. PROJEKTKONTEXT
+
+**Prototyp** zur Anforderungserhebung für das digitale Meldewesen in Hamburger JVAs.
+Dient Validierung mit JVA-Bediensteten → Lastenheft für LC-Plattform (Appian oder ServiceNow).
+
+**Unterschied A2 zu A1:**
+
+| Aspekt | A1 eGefangenenanträge | A2 eMeldewesen |
+|---|---|---|
+| Initiiert von | Bedienstete (für Gefangene) | Bedienstete |
+| Gefangenenportal | ✅ Ja | ❌ Nein |
+| Außenwirkung | Intern + eGPA | Intern + eGPA + xJustiz/beBPo |
+| ERV-Pflicht | Nein | Ja (bei Strafanzeigen, Gerichtsmeldungen) |
+
+---
+
+## 2. ROLLENMODELL (maßgeblich)
+
+### 2.1 Kanonische Rollencodes
+
+Rollencodes sind **immer lowercase**, keine Aliase, kein SCREAMING_SNAKE_CASE.
+
+| Rollencode | UI-Label | Abkürzung | Sichtbereich |
+|---|---|---|---|
+| `anstaltsleitung` | Anstaltsleitung | AL | gesamte Anstalt (alle Abteilungen, nur eigene JVA) |
+| `val` | Vollzugsabteilungsleitung | VAL | eigene Vollzugsabteilung |
+| `stationsleitung` | Stationsleitung / Wohngruppenleitung | SL | eigene Station |
+| `avd` | Allgemeiner Vollzugsdienst | aVD | eigene Station |
+| `kammer` | Kammer | – | eigene JVA |
+| `zahlstelle` | Zahlstelle | – | eigene JVA |
+| `arbeitskoordination` | Arbeitskoordination | – | eigene JVA |
+
+**Hinweis Stationsleitung:** „Stationsleitung" und „Wohngruppenleitung" sind JVA-abhängige Bezeichnungen für dieselbe Funktion. Rollencode ist immer `stationsleitung`.
+
+**Fachdienste (zurückgestellt):** `sozialdienst`, `medizin`, `pforte`, `werkdienst`, `psychologie` – Platzhalter in allen vier Dateien vorhanden, bei Bedarf einkommentieren.
+
+### 2.2 Neue Rollen hinzufügen
+
+Nur diese vier Dateien anpassen – sonst nichts:
+1. `frontend/src/context/RollenContext.jsx` → `ROLLEN_CONFIG` + `BERECHTIGUNGEN` + `DEMO_NUTZER`
+2. `backend/src/middleware/mockAuth.js` → `GUELTIGE_ROLLEN` + `BERECHTIGUNGEN_MAP`
+3. `backend/prisma/schema.prisma` → `RolleTyp`-Enum (Kommentar-Platzhalter vorhanden)
+4. `frontend/src/components/layout/PrototypBanner.jsx` → `ROLLEN_REIHENFOLGE`
+
+### 2.3 Berechtigungsmatrix (Validierungshypothese)
+
+| Aktion | aVD | Stationsleitung | VAL | AL | Kammer | Zahlstelle | Arbeitskoord. |
+|---|---|---|---|---|---|---|---|
+| Meldung erstellen | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Meldung bearbeiten | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Weiterleiten | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| eGPA verakten | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| xJustiz/beBPo senden | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Meldung abschließen | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Sichtbereich | Station | Station | Abteilung | Anstalt | JVA | JVA | JVA |
+
+AL und VAL haben identische Berechtigungen; AL sieht zusätzlich alle Abteilungen der eigenen Anstalt.
+
+---
+
+## 3. ARCHITEKTUR
+
+```
+jvp-starter-a2/
+├── frontend/
+│   ├── public/assets/
+│   │   └── Justizvollzug-Hamburg-logo.png  ← NIE umbenennen!
+│   └── src/
+│       ├── components/
+│       │   ├── layout/     ← NICHT VERÄNDERN (gemeinsame Shell)
+│       │   ├── shared/     ← StatusBadge, ERVBadge etc.
+│       │   └── meldung/    ← A2-spezifische Komponenten hier
+│       ├── pages/          ← Neue Seiten hier anlegen
+│       ├── context/        ← RollenContext (NICHT VERÄNDERN)
+│       └── api/            ← client.js (NICHT VERÄNDERN)
+│
+├── backend/
+│   └── src/
+│       ├── server.js
+│       ├── routes/index.js    ← A2-Endpunkte
+│       ├── middleware/        ← mockAuth.js (NICHT VERÄNDERN)
+│       ├── utils/rollen.js    ← Normalisierung (NICHT VERÄNDERN)
+│       └── services/          ← pdfService, egpaService, xJustizService
+│
+├── docker-compose.yml
+└── .env.example
+```
+
+---
+
+## 4. FRONTEND: React + Tailwind
+
+### 4.1 Tech Stack
+React 18, Vite, Tailwind CSS, React Router v6
+
+### 4.2 Routen
+```
+/                       → /dashboard
+/dashboard              → JVPDashboard (JVP-Einstieg mit Kacheln)
+/meldungen              → MeldungenListe
+/meldungen/neu          → MeldungNeu
+/meldungen/:id          → MeldungDetail
+/meldungen/:id/bearbeiten → MeldungBearbeiten
+```
+
+### 4.3 Design-Tokens (wie styles.css :root)
+
+Nur `jhh-*`-Farben aus `tailwind.config.js` verwenden, nie hardcoded Hex-Werte:
+```
+jhh-primary    #003063  Dunkelblau – Header, primäre Buttons
+jhh-secondary  #005CA9  Mittelblau – Links, Fokus, Sekundär
+jhh-accent     #E10019  Rot – Warnungen, ERV-Badges
+jhh-bg         #EEF0F3  Seitenhintergrund
+jhh-success    #2E7D32  Grün – Abgeschlossen
+jhh-warning    #E65100  Orange – Fachliche Prüfung (IN_PROGRESS)
+jhh-danger     #E10019  Rot – Fehler, Abgelehnt
+```
+
+### 4.4 Schrift
+**Open Sans** – über Google Fonts in `styles/index.css` importiert.
+Nicht HamburgSans (nicht lizenziert für Prototypen-Scope).
+
+### 4.5 Logo-Einbindung (Pflicht)
+```jsx
+// In Header.jsx – weißes Hintergrundfeld, KEIN CSS-Filter
+<div style={{ background: '#ffffff' }} className="rounded px-2 py-1">
+  <img
+    src="/assets/Justizvollzug-Hamburg-logo.png"
+    alt="Hamburg – Behörde für Justiz und Verbraucherschutz"
+    className="h-9 w-auto"
+  />
+</div>
+```
+**Niemals** `brightness()`, `invert()` oder andere Filter auf das Logo anwenden.
+
+### 4.6 Prototype-Banner
+```jsx
+// body bekommt class="has-prototype-banner" (padding-top: 38px)
+// Banner: gelber Balken, Schnellwechsel-Dropdown
+// Neue Rolle hinzufügen: DEMO_NUTZER in RollenContext.jsx ergänzen
+```
+
+### 4.7 PageLayout (Pflicht für jede Seite)
+```jsx
+<PageLayout
+  plattformTitel="eMeldewesen"
+  fachverfahren={{ label: 'eMeldewesen', href: '/dashboard' }}
+  seiten={[{ label: 'Neue Meldung' }]}
+>
+  {/* Seiteninhalt */}
+</PageLayout>
+```
+
+### 4.8 API-Calls
+```jsx
+import { useApiClient } from '../api/client'
+const api = useApiClient()
+const result = await api.get('/api/meldungen?status=SUBMITTED')
+```
+
+### 4.9 ERV-Kennzeichnung (A2-spezifisch)
+```jsx
+import { ERVBadge } from '../components/shared/StatusBadge'
+
+// In Listen und Detailansichten:
+{meldung.ervRelevant && <ERVBadge />}
+
+// Button "Per beBPo versenden" (nur VAL):
+{meldung.ervRelevant && darfXJustizSenden && (
+  <button className="btn-primary btn-sm">⚖️ Per beBPo versenden</button>
+)}
+```
+
+---
+
+## 5. BACKEND: Node.js + Express + Prisma
+
+### 5.1 Tech Stack
+Node.js 20, Express 4, Prisma ORM, PostgreSQL 15, pdfkit
+
+### 5.2 API-Endpunkte
+```
+GET    /health
+GET    /api/rollen                              → Aktuelle Rolle + Berechtigungen
+GET    /api/gefangene?search=...               → Autocomplete
+GET    /api/meldungstypen                      → Typen + ERV-Flag
+GET    /api/meldungen                          → Liste (rollenbasiert gefiltert)
+GET    /api/meldungen/:id                      → Detail + StatusVerlauf + xJustiz + Anhänge
+POST   /api/meldungen                          → Erstellen
+PATCH  /api/meldungen/:id                      → Entwurf bearbeiten
+PATCH  /api/meldungen/:id/status               → Status ändern
+POST   /api/meldungen/:id/anhaenge             → Dateianhänge (nur Entwurf, multer)
+GET    /api/meldungen/:meldungId/anhaenge/:anhangId/file → Anhang-Download
+POST   /api/meldungen/:id/verakten             → eGPA (nur VAL)
+POST   /api/meldungen/:id/xjustiz-versand      → beBPo (nur VAL, nur ERV-pflichtig)
+GET    /api/meldungen/:id/xjustiz-versand      → Versandverlauf
+```
+
+### 5.3 Filterregel Backend
+```javascript
+// mockAuth.js liefert req.mockNutzer mit kanonischer Rolle
+const { rolle, jva, siehtAlleJVAs } = req.mockNutzer
+// Filterung:
+const where = siehtAlleJVAs ? {} : { gefangene: { jva } }
+```
+
+---
+
+## 6. DATENBANKSCHEMA
+
+Kerntabellen: `Meldung`, `StatusVerlauf`, `Gefangene`, `Bedienstete`,
+`Veraktung` (eGPA), `XJustizVersand` (beBPo).
+
+`RolleTyp`-Enum: lowercase, spiegelt `ROLLEN_CONFIG` im Frontend.
+Neue Rolle: Kommentar-Platzhalter in `schema.prisma` beachten.
+
+---
+
+## 7. DOCKER
+
+```bash
+docker compose up     # startet PostgreSQL + Backend + Frontend
+docker compose down   # stoppen
+docker compose down -v # Datenbank zurücksetzen
+```
+
+**Railway-Deployment** (später):
+1. GitHub-Repo → railway.app → New Project
+2. PostgreSQL-Plugin hinzufügen
+3. Umgebungsvariablen aus `.env.example` eintragen
+4. Deploy
+
+---
+
+## 8. NICHT IN DIESEM PROTOTYP
+
+❌ Echte AD-Authentifizierung (nur Mock-Header)
+❌ Echte eGPA/VIS-Anbindung (nur Mock)
+❌ Echte beBPo/xJustiz-Anbindung (nur Mock-XML)
+❌ Echte BASIS-Web-Anbindung (Seed-Daten aus PostgreSQL)
+❌ Gefangenenportal (gehört zu A1)
+❌ E-Mail-Versand
+❌ Mobile-first (Tablet + Desktop reichen)
+❌ Sicherheitsmechanismen (kein CSRF, kein Rate Limiting)
+
+---
+
+## 9. SPRACHE & KONVENTIONEN
+
+- UI-Texte, Kommentare, Fehlermeldungen: **Deutsch**
+- Variablen, Funktionen, API-Routen: **Englisch**
+- Formelles **Sie** in der Nutzeransprache
+- Fehlermeldungen konkret: „Bitte wählen Sie einen Empfänger." – nicht „Fehler"
+- Statusbezeichnungen: Entwurf · Eingereicht · Fachliche Prüfung · Weitergeleitet · Archiviert
+
+---
+
+## 10. BARRIEREFREIHEIT (WCAG 2.1 AA)
+
+- Formularfelder: sichtbares Label + `htmlFor`
+- Pflichtfelder: `*` + `aria-required="true"`
+- Status: immer Text + Farbe + Icon (nie nur Farbe)
+- Min. Klickfläche: 44×44px
+- Fokus: `focus:ring-2 focus:ring-jhh-secondary`
+
+---
+
+## 11. STARTER-PROMPTS FÜR CURSOR
+
+### Meldungs-Listenseite
+```
+Erstelle /frontend/src/pages/MeldungenListe.jsx für A2 eMeldewesen.
+Nutze PageLayout mit plattformTitel="eMeldewesen",
+fachverfahren={{ label: 'eMeldewesen', href: '/dashboard' }},
+seiten={[{ label: 'Alle Meldungen' }]}.
+Zeige Tabelle aus GET /api/meldungen.
+ERV-pflichtige Meldungen mit ERVBadge kennzeichnen.
+Überfällige (IN_PROGRESS, >5 Tage) rot markieren.
+Filter: Status, Meldungstyp (Dropdowns).
+Nur jhh-* Farben aus tailwind.config.js.
+Kommentare Deutsch.
+```
+
+### xJustiz-Versand-Button (nur VAL und AL)
+```
+Füge auf MeldungDetail.jsx einen Button "⚖️ Per beBPo versenden" hinzu.
+Sichtbar nur wenn meldung.ervRelevant === true
+UND (useRolle().istVAL === true ODER useRolle().istAL === true).
+Beim Klick: Bestätigungsdialog → POST /api/meldungen/:id/xjustiz-versand.
+Nach Erfolg: Badge "✅ Per beBPo versendet" + bepoNachrichtenId.
+Versandverlauf nachladen aus GET /api/meldungen/:id/xjustiz-versand.
+```
+
+### Rollenabhängige Ansicht testen
+```javascript
+// Im Component:
+const { aktiveRolle, istAL, istVAL, siehtGesamteAnstalt, darfVerakten } = useRolle()
+// Rollencodes: 'anstaltsleitung', 'val', 'stationsleitung', 'avd',
+//              'kammer', 'zahlstelle', 'arbeitskoordination'
+```
+
+---
+
+## 12. PROJEKT-DOKUMENTATION (Rückfragen)
+
+Bei **Rückfragen** an Nutzer:innen (Fachprozess, Rollen, Lastenheft, Workshops) und bei neu erkannten **offenen Fragen**, **Annahmen** oder **Empfehlungen** zu A2 eMeldewesen: Inhalt zusätzlich in **`docs/RUECKFRAGEN_UND_OFFENE_PUNKTE.md`** eintragen (passender Cluster oder Abschnitt **Chronik neue Einträge**), nicht nur im Chat belassen.
+
+---
+
+## 13. DOKUMENTATION NACH ANPASSUNGEN (Pflicht)
+
+Nach **fachlichen oder technischen Anpassungen** am Prototyp (nicht bei reinen Kosmetik-Fixes):
+
+1. **Docs mitpflegen** – passende `docs/UMSETZUNG_*.md`, Happy Path, Lastenheft, Hackathon-To-dos; nicht nur im Chat dokumentieren.
+2. **Protokoll** – Eintrag in **`docs/PROTOKOLL_AENDERUNGEN.md`** (Datum, Umfang, Code, Docs, Commit-Hash).
+3. **Commit** – wenn committet wird: Doc- und Protokoll-Dateien **im selben Commit** wie Code; danach Hash im Protokoll nachtragen.
+
+Details: `.cursor/rules/dokumentation-nach-aenderungen.mdc`

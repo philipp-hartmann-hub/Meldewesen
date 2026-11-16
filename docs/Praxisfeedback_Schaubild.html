@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Praxisfeedback – Gesamtschaubild eMeldewesen</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', flowchart: { htmlLabels: true, curve: 'basis' } });
+  </script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 1.5rem 2rem; background: #eef0f3; color: #003063; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+    p { margin: 0 0 1.5rem; font-size: 0.95rem; color: #333; }
+    .diagram { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow-x: auto; }
+    .mermaid { min-width: min(100%, 900px); }
+  </style>
+</head>
+<body>
+  <h1>Gesamtschaubild – feedbacketer Prozess (Praxis)</h1>
+  <p>A2 eMeldewesen · Quelle: <code>Praxisfeedback.md</code> · Stand 2026-06-08</p>
+  <div class="diagram">
+    <pre class="mermaid">
+flowchart TB
+  subgraph Ereignis["① Ereignis"]
+    END[Ereignis beendet]
+  end
+
+  subgraph Erfassung["② Parallele Ersterfassung (je aVD)"]
+    END --> A1[aVD 1: Meldung&lt;br/&gt;Tun + Beobachtung]
+    END --> A2[aVD 2: Meldung&lt;br/&gt;Tun + Beobachtung]
+    END --> An[aVD n: …]
+    W[W-Fragen → Textvorlage&lt;br/&gt;→ Sachverhalt bearbeitbar]
+    GEF[Gefangene/r: gesamtes&lt;br/&gt;Hafthaus wählbar]
+    BET[Gefangene = Beteiligte&lt;br/&gt;nicht Zeugen]
+    BM[Beweismittel: nur&lt;br/&gt;Sicherstellung&lt;br/&gt;bei Polizei-Ermittlung]
+    ZG[Zeugen: Bedienstete /&lt;br/&gt;extern – keine Inhaftierten]
+    A1 --> W
+    A1 --> GEF
+    A1 --> BET
+    A1 --> BM
+    A1 --> ZG
+  end
+
+  subgraph Koordination["③ Koordination"]
+    A1 --> Z[Zentrale]
+    A2 --> Z
+    An --> Z
+    Z --> |bündelt Meldungen&lt;br/&gt;zum gleichen Fall| BND[Gebündelter Vorgang]
+  end
+
+  subgraph Pruefung["④ Prüfung &amp; Qualität"]
+    BND --> DGL[Dienstgruppenleitung&lt;br/&gt;prüft Qualität]
+    DGL -->|nicht ausreichend| A1
+    DGL -->|Qualität ok| AL[Anstaltsleitung]
+  end
+
+  subgraph Entscheidung["⑤ Entscheidung"]
+    AL --> MP{Meldepflichtiger&lt;br/&gt;Vorfall?}
+    MP -->|nein| INT[Interner Abschluss]
+    MP -->|ja| ERV[Weiterer ERV-Weg&lt;br/&gt;beBPo / eGPA …]
+  end
+
+  subgraph VALAufgabe["⑥ Befragung Beteiligte"]
+    BET -.-> VAL[Abteilungsleitung VAL&lt;br/&gt;befragt inhaftierte&lt;br/&gt;Beteiligte]
+    MP -.-> VAL
+  end
+
+  style Ereignis fill:#eef0f3
+  style Erfassung fill:#e8f4fc
+  style Koordination fill:#fff8e1
+  style Pruefung fill:#fce4ec
+  style Entscheidung fill:#e8f5e9
+  style VALAufgabe fill:#f3e5f5
+    </pre>
+  </div>
+</body>
+</html>

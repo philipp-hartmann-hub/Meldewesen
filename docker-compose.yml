@@ -1,0 +1,64 @@
+# docker compose up – startet db + backend + frontend
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: jvp_a2_db
+    environment:
+      POSTGRES_DB:       jvp_a2_meldewesen
+      POSTGRES_USER:     jvp_user
+      POSTGRES_PASSWORD: jvp_dev_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_a2_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jvp_user -d jvp_a2_meldewesen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jvp_a2_backend
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://jvp_user:jvp_dev_2026@db:5432/jvp_a2_meldewesen
+      PORT:         3001
+      NODE_ENV:     development
+      FRONTEND_URL: http://localhost:5173
+      EGPA_MODUS:   REST
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    command: sh -c "npm run db:push && node seed.js && npm run dev"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: jvp_a2_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_JVP_URL: http://localhost:5174   # JVP-Dashboard URL
+      VITE_A1_URL:  http://localhost:5175   # A1 eGefangenenanträge URL
+      VITE_A2_URL:  http://localhost:5173
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres_a2_data:
+  backend_node_modules:
+  frontend_node_modules:

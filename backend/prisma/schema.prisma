@@ -1,0 +1,306 @@
+// schema.prisma – HEUREKA 2.0 | A2 eMeldewesen
+// Datenbankschema = Datenwörterbuch für das Lastenheft
+// Rollenstrings: LOWERCASE wie in app.js / MDC-Spezifikation
+// NICHT VERÄNDERN ohne Abstimmung mit Lukas
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------
+// GEFANGENE – Mock aus BASIS-Web (lesend); Stammdaten: seed → data/basisWebDummyGefangene.js (30 Demo-Datensätze)
+// -------------------------------------------------------
+model Gefangene {
+  id                   String    @id @default(uuid())
+  gefangenenNr         String    @unique
+  nachname             String
+  vorname              String
+  geburtsdatum         DateTime?
+  staatsangehoerigkeit String?
+  muttersprache        String?
+  jva                  String
+  haus                 String?           // z.B. "haus1"
+  haftraum             String?
+  haftart              String?
+  strafende            DateTime?
+  vollzugsabteilung    String?
+  betreuenderBeamter   String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  meldungen            Meldung[]
+
+  @@map("gefangene")
+}
+
+// -------------------------------------------------------
+// BEDIENSTETE – Mock aus Active Directory
+// rolle: Kanonische Kleinschreibung aus app.js getRolleText()
+// -------------------------------------------------------
+model Bedienstete {
+  id                    String   @id @default(uuid())
+  bediensteterID        String   @unique  // z.B. "BD-AVD-1"
+  bediensteterName      String
+  bediensteterRolle     RolleTyp          // lowercase enum
+  bediensteterJVA       String
+  haus                  String?           // z.B. "haus1"
+  station               String?           // z.B. "1"
+  createdAt             DateTime @default(now())
+
+  zugewieseneMeldungen  Meldung[]      @relation("Zustaendig")
+  statusAenderungen     StatusVerlauf[]
+  veraktungen           Veraktung[]
+  xJustizVersendungen   XJustizVersand[]
+  erstellteFaelle       MeldungsFall[] @relation("FallErstelltVon")
+
+  @@map("bedienstete")
+}
+
+// -------------------------------------------------------
+// MELDUNGS-FALL – Bündelung gleicher Vorfälle (Zentrale → DGL → AL)
+// -------------------------------------------------------
+model MeldungsFall {
+  id                   String             @id @default(uuid())
+  fallNr               String             @unique
+  bezeichnung          String?
+  status               MeldungsFallStatus @default(SAMMELN)
+  jva                  String
+  rueckgabeGrund       String?
+  meldepflichtig       Boolean?
+  alEntscheidKommentar String?
+  alEntscheidAm        DateTime?
+  entscheidVonRolle    String?            // anstaltsleitung | val
+  versandfaehigAm      DateTime?
+  bepoVersendetAm      DateTime?
+  bepoNachrichtenId    String?
+  egpaVeraktetAm       DateTime?
+  egpaAktenzeichen     String?
+  abgeschlossenAm      DateTime?
+  erstelltVonId        String?
+  erstelltVon          Bedienstete?       @relation("FallErstelltVon", fields: [erstelltVonId], references: [id])
+  erstelltAm           DateTime           @default(now())
+  aktualisiertAm       DateTime           @updatedAt
+  meldungen            Meldung[]
+
+  @@map("meldungs_faelle")
+}
+
+// -------------------------------------------------------
+// MELDUNG – Kerntabelle A2 eMeldewesen
+// -------------------------------------------------------
+model Meldung {
+  id             String         @id @default(uuid())
+  meldungsNr     String         @unique      // z.B. "MEL-018"
+  meldungsTyp    MeldungsTyp
+  status         MeldungsStatus @default(DRAFT)
+  sachverhalt    String?
+  metadaten      Json?                        // typ-spezifisch, flexibel bis Workshops
+  ervRelevant    Boolean        @default(false)
+  prioritaet     Int            @default(0)   // 0=normal, 1=dringend
+  empfaenger     String?
+  empfaengerTyp  EmpfaengerTyp?
+  erstelltAm     DateTime       @default(now())
+  aktualisiertAm DateTime       @updatedAt
+
+  gefangeneId    String?
+  gefangene      Gefangene?     @relation(fields: [gefangeneId], references: [id])
+
+  fallId         String?
+  fall           MeldungsFall?  @relation(fields: [fallId], references: [id])
+
+  zustaendigId   String?
+  zustaendig     Bedienstete?   @relation("Zustaendig", fields: [zustaendigId], references: [id])
+
+  statusVerlauf  StatusVerlauf[]
+  anhaenge       Anhang[]
+  veraktungen    Veraktung[]
+  xJustizVersand XJustizVersand[]
+  notizen        Notiz[]
+
+  @@map("meldungen")
+}
+
+// -------------------------------------------------------
+// BENACHRICHTIGUNG – In-App-Hinweise (Prototyp-Glocke)
+// -------------------------------------------------------
+model Benachrichtigung {
+  id           String   @id @default(uuid())
+  empfaengerId String
+  typ          String
+  text         String
+  meldungId    String?
+  aufgabeId    String?
+  gelesen      Boolean  @default(false)
+  erstelltAm   DateTime @default(now())
+
+  @@index([empfaengerId, gelesen, erstelltAm])
+  @@map("benachrichtigungen")
+}
+
+// -------------------------------------------------------
+// NOTIZ – interne Arbeitsnotiz zu einer Meldung
+// -------------------------------------------------------
+model Notiz {
+  id           String   @id @default(uuid())
+  text         String
+  erstelltAm   DateTime @default(now())
+  erstelltVon  String?                     // Nutzer-ID (mock)
+  meldungId    String
+  meldung      Meldung  @relation(fields: [meldungId], references: [id])
+
+  @@map("notizen")
+}
+
+// -------------------------------------------------------
+// STATUS-VERLAUF
+// -------------------------------------------------------
+model StatusVerlauf {
+  id            String         @id @default(uuid())
+  status        MeldungsStatus
+  kommentar     String?
+  erstelltAm    DateTime       @default(now())
+  meldungId     String
+  meldung       Meldung        @relation(fields: [meldungId], references: [id])
+  bediensteteId String?
+  bedienstete   Bedienstete?   @relation(fields: [bediensteteId], references: [id])
+
+  @@map("status_verlauf")
+}
+
+// -------------------------------------------------------
+// ANHANG
+// -------------------------------------------------------
+model Anhang {
+  id           String   @id @default(uuid())
+  dateiname    String
+  dateityp     String
+  pfad         String
+  beschreibung String?  // Kurztext der meldenden Person (Prototyp)
+  erstelltAm   DateTime @default(now())
+  meldungId    String
+  meldung      Meldung  @relation(fields: [meldungId], references: [id])
+
+  @@map("anhaenge")
+}
+
+// -------------------------------------------------------
+// VERAKTUNG – eGPA-Übermittlung
+// -------------------------------------------------------
+model Veraktung {
+  id               String          @id @default(uuid())
+  erstelltAm       DateTime        @default(now())
+  pdfPfad          String
+  egpaAktenzeichen String?
+  status           VeraktungStatus @default(AUSSTEHEND)
+  fehlerMeldung    String?
+  meldungId        String
+  meldung          Meldung         @relation(fields: [meldungId], references: [id])
+  ausgefuehrtVonId String?
+  ausgefuehrtVon   Bedienstete?    @relation(fields: [ausgefuehrtVonId], references: [id])
+
+  @@map("veraktungen")
+}
+
+// -------------------------------------------------------
+// XJUSTIZ-VERSAND – beBPo-Kommunikation (A2-spezifisch)
+// -------------------------------------------------------
+model XJustizVersand {
+  id                String        @id @default(uuid())
+  erstelltAm        DateTime      @default(now())
+  pdfPfad           String
+  xJustizXmlPfad    String
+  empfaenger        String
+  empfaengerTyp     EmpfaengerTyp
+  bepoNachrichtenId String?
+  status            XJustizStatus @default(AUSSTEHEND)
+  fehlerMeldung     String?
+  xJustizVersion    String        @default("3.3")
+  meldungId         String
+  meldung           Meldung       @relation(fields: [meldungId], references: [id])
+  versendetVonId    String?
+  versendetVon      Bedienstete?  @relation(fields: [versendetVonId], references: [id])
+
+  @@map("xjustiz_versand")
+}
+
+// -------------------------------------------------------
+// ENUMS
+// RolleTyp: Kanonische Kleinschreibung aus app.js getRolleText()
+// Neue Rollen: hier ergänzen + ROLLEN_CONFIG im Frontend aktualisieren
+// -------------------------------------------------------
+enum RolleTyp {
+  // ---- Leitungsebene ----
+  anstaltsleitung      // AL  – gesamte Anstalt
+  val                  // VAL – eine Vollzugsabteilung
+  dienstgruppenleitung // DGL – Qualitätsprüfung vor Anstaltsleitung
+  // ---- Vollzugsdienst ----
+  stationsleitung      // SL  – Station / Wohngruppe (JVA-abhängige Bezeichnung)
+  avd                  // aVD – Allgemeiner Vollzugsdienst
+  // ---- Sonderdienste ----
+  sonderdienst         // Psychologie, Sozialdienst, Medizin, Seelsorge, Werkdienst (Prototyp)
+  kammer
+  zahlstelle
+  arbeitskoordination
+  // ---- Admin ----
+  admin
+  // ---- Fachdienste (zurückgestellt, bei Bedarf einkommentieren) ----
+  // sozialdienst
+  // medizin
+  // pforte
+  // werkdienst
+  // psychologie
+}
+
+enum MeldungsFallStatus {
+  SAMMELN              // Zentrale bündelt Einzelmeldungen
+  ZUR_DGL              // gebündelt an Dienstgruppenleitung
+  ZURUECK_AK           // DGL-Rückgabe an Zentrale
+  ZUR_SL               // DGL-Freigabe an Stationsleitung (Fallmeldung)
+  ZUR_AL               // SL-Freigabe an AL/VAL zur Meldepflicht-Entscheid
+  EGPA_INTERN          // nicht meldepflichtig → eGPA am Fall (ohne beBPo)
+  ERV_WEG              // meldepflichtig → versandfähig → beBPo → eGPA
+  ABGESCHLOSSEN_INTERN // Fall vollständig abgeschlossen (intern oder ERV)
+}
+
+enum MeldungsStatus {
+  DRAFT
+  SUBMITTED
+  IN_PROGRESS
+  FORWARDED
+  ARCHIVED
+}
+
+enum MeldungsTyp {
+  STRAFANZEIGE
+  VORFALL_INTERN
+  MELDUNG_GERICHT
+  VORFALL_EXTERN
+  STATISTIK_MELDUNG
+  SONSTIGE
+}
+
+enum EmpfaengerTyp {
+  STAATSANWALTSCHAFT
+  GERICHT
+  POLIZEI
+  BEHOERDE_EXTERN
+  INTERN_ABTEILUNG
+  INTERN_LEITUNG
+}
+
+enum VeraktungStatus {
+  AUSSTEHEND
+  UEBERMITTELT
+  FEHLGESCHLAGEN
+}
+
+enum XJustizStatus {
+  AUSSTEHEND
+  VERSENDET
+  BESTAETIGT
+  FEHLGESCHLAGEN
+}

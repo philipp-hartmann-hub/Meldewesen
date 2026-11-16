@@ -1,0 +1,324 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   HEUREKA 2.0 – Basis-Styles
+   Spiegelt die CSS-Variablen aus public/styles.css
+   NICHT VERÄNDERN
+   ============================================================ */
+
+@layer base {
+  :root {
+    --jhh-primary:    #003063;
+    --jhh-secondary:  #005ca9;
+    --jhh-accent:     #e10019;
+    --jhh-bg:         #eef0f3;
+    --jhh-text:       #1a1a1a;
+    --jhh-text-light: #5a6472;
+    --jhh-border:     #c8cdd5;
+    --jhh-success:    #2e7d32;
+    --jhh-warning:    #e65100;
+    --jhh-danger:     #e10019;
+    --jhh-info:       #005ca9;
+    --hamburg-rot:    #e10019;
+    --hamburg-blau:   #003063;
+    --hamburg-tuerkis: #00a5b5;
+    --bg-primary:     #eef0f3;
+    --bg-secondary:   #ffffff;
+    --bg-card:        #ffffff;
+    --bg-tertiary:    #f7f9fb;
+    --text-primary:   #1a1a1a;
+    --text-secondary: #5a6472;
+    --text-muted:     #999999;
+    --border-color:   #c8cdd5;
+    --shadow:         0 2px 8px rgba(0,0,0,0.08);
+    --radius:         8px;
+    --radius-sm:      4px;
+    --radius-lg:      12px;
+    /* Feste Höhen für Sticky-Header / Stepper (Desktop-Arbeitsfläche) */
+    --layout-banner-h: 2.25rem;
+    --layout-header-h: 3.5rem;
+    --layout-sticky-under-header: calc(var(--layout-banner-h) + var(--layout-header-h));
+    --page-padding-x: 1.5rem;
+  }
+
+  html {
+    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    width: 100%;
+  }
+
+  body {
+    @apply bg-jhh-bg text-jhh-text;
+    width: 100%;
+    min-height: 100vh;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* Prototyp-Banner: im Dokumentfluss (sticky), kein extra Body-Padding */
+  body.has-prototype-banner {
+    padding-top: 0;
+  }
+
+  h1 { @apply text-2xl font-bold text-jhh-primary; }
+  h2 { @apply text-xl font-bold text-jhh-primary; }
+  h3 { @apply text-lg font-semibold text-jhh-primary; }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-jhh-secondary ring-offset-1;
+  }
+}
+
+@layer components {
+  /* ---- Buttons (wie styles.css) ---- */
+  .btn-primary {
+    @apply bg-jhh-primary text-white font-semibold px-6 py-2.5 rounded-sm
+           min-h-[44px] inline-flex items-center justify-center gap-2
+           hover:bg-jhh-secondary transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply border-2 border-jhh-primary text-jhh-primary font-semibold px-6 py-2.5 rounded-sm
+           min-h-[44px] bg-white hover:bg-jhh-hover transition-all duration-150;
+  }
+  .btn-danger {
+    @apply bg-jhh-danger text-white font-semibold px-6 py-2.5 rounded-sm
+           min-h-[44px] hover:bg-red-700 transition-all duration-150;
+  }
+  .btn-success {
+    @apply bg-jhh-success text-white font-semibold px-6 py-2.5 rounded-sm
+           min-h-[44px] hover:bg-green-800 transition-all duration-150;
+  }
+  .btn-sm {
+    @apply px-4 py-2 text-sm min-h-[38px];
+  }
+
+  /* ---- Status-Badges (wie styles.css .status-badge.*) ---- */
+  .status-badge {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap;
+  }
+  .status-draft     { @apply status-badge bg-gray-100 text-jhh-text-light border border-gray-300; }
+  .status-submitted { @apply status-badge bg-blue-50 text-jhh-info border border-blue-200; }
+  .status-progress  { @apply status-badge bg-orange-50 text-jhh-warning border border-orange-200; }
+  .status-approved  { @apply status-badge bg-green-50 text-jhh-success border border-green-200; }
+  .status-rejected  { @apply status-badge bg-red-50 text-jhh-danger border border-red-200; }
+  .status-forwarded { @apply status-badge bg-purple-50 text-purple-700 border border-purple-200; }
+  .status-archived  { @apply status-badge bg-gray-100 text-gray-600 border border-gray-300; }
+
+  /* ---- ERV-Badge (A2-spezifisch) ---- */
+  .erv-badge {
+    @apply inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5
+           rounded bg-purple-50 text-purple-700 border border-purple-200;
+  }
+
+  /* ---- Karten (wie styles.css .section) ---- */
+  .card {
+    @apply bg-white rounded border border-jhh-border;
+    box-shadow: var(--shadow);
+  }
+  .section-card {
+    @apply card p-6;
+  }
+
+  /* ---- Formular (wie styles.css .form-group) ---- */
+  .form-label {
+    @apply block text-sm font-semibold text-jhh-text mb-1;
+  }
+  .form-label-required::after {
+    content: ' *';
+    @apply text-jhh-danger;
+  }
+  .form-input {
+    @apply w-full border border-jhh-border rounded-sm px-3 py-2 text-base
+           text-jhh-text min-h-[44px] font-sans
+           focus:outline-none focus:ring-2 focus:ring-jhh-secondary focus:border-jhh-secondary
+           placeholder:text-jhh-text-light;
+    background: var(--bg-secondary);
+  }
+
+  /* Datum/Uhrzeit: gesamtes Feld klickbar, sichtbares Icon rechts */
+  .form-input-picker-wrap {
+    @apply relative w-full;
+  }
+
+  .form-input-picker {
+    @apply relative w-full min-w-[11rem] cursor-pointer;
+    padding-right: 2.75rem;
+  }
+
+  .form-input-picker-icon {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-jhh-secondary;
+  }
+
+  .tatzeit-picker-trigger {
+    @apply text-left;
+  }
+
+  .tatzeit-picker-panel {
+    @apply absolute left-0 right-0 top-full z-20 mt-1 p-4 rounded border border-jhh-border bg-white;
+    box-shadow: var(--shadow);
+  }
+
+  /* ---- Rich-Text-Editor ---- */
+  .rich-text-editor-wrap {
+    @apply border border-jhh-border rounded-sm overflow-hidden;
+    background: var(--bg-secondary);
+  }
+
+  .rich-text-toolbar {
+    @apply flex flex-wrap items-center gap-1 px-2 py-1 border-b border-jhh-border bg-jhh-bg;
+  }
+
+  .rich-text-toolbar-btn {
+    @apply min-h-[36px] min-w-[36px] px-2 rounded text-sm font-semibold text-jhh-text
+           hover:bg-jhh-hover focus:outline-none focus:ring-2 focus:ring-jhh-secondary;
+  }
+
+  .rich-text-toolbar-sep {
+    @apply w-px h-6 bg-jhh-border mx-1;
+  }
+
+  .rich-text-editor {
+    @apply w-full px-3 py-2 text-base text-jhh-text font-sans outline-none;
+  }
+
+  .rich-text-editor:focus {
+    @apply ring-2 ring-jhh-secondary ring-inset;
+  }
+
+  .rich-text-editor ul {
+    @apply list-disc pl-5 my-2;
+  }
+
+  .rich-text-editor ol {
+    @apply list-decimal pl-5 my-2;
+  }
+
+  .rich-text-editor li {
+    @apply my-0.5;
+  }
+
+  .rich-text-editor p {
+    @apply my-1;
+  }
+
+  .rich-text-editor-empty:empty::before {
+    content: attr(data-placeholder);
+    @apply text-jhh-text-light pointer-events-none;
+  }
+
+  .rich-text-display ul {
+    @apply list-disc pl-5 my-2;
+  }
+
+  .rich-text-display ol {
+    @apply list-decimal pl-5 my-2;
+  }
+
+  .rich-text-display li {
+    @apply my-0.5;
+  }
+
+  .rich-text-display p {
+    @apply my-1;
+  }
+
+  /* ---- Tabellen (wie styles.css .data-table) ---- */
+  .table-header th {
+    @apply bg-jhh-primary text-white text-sm font-semibold text-left px-4 py-3 whitespace-nowrap;
+  }
+  .table-sort-btn {
+    @apply inline-flex items-center gap-1.5 w-full min-h-[44px] -my-3 -mx-4 px-4 py-3
+           bg-transparent border-0 text-white text-sm font-semibold text-left cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset rounded;
+  }
+  .table-sort-icon {
+    @apply text-xs opacity-80 flex-shrink-0;
+  }
+  .table-row {
+    @apply border-b border-jhh-border hover:bg-jhh-hover transition-colors cursor-pointer;
+    min-height: 44px;
+  }
+  .table-row:nth-child(even) { background: var(--bg-tertiary); }
+  .table-cell { @apply px-4 py-3 text-sm; }
+
+  /* ---- JVP-Kacheln (wie styles.css .jvp-kachel) ---- */
+  .jvp-kachel {
+    @apply flex items-start gap-3 w-full text-left p-4 rounded
+           border border-jhh-border bg-white cursor-pointer
+           transition-all duration-200 relative;
+  }
+  .jvp-kachel:hover {
+    @apply border-jhh-secondary -translate-y-px;
+    box-shadow: 0 4px 12px rgba(0,48,99,0.12);
+  }
+  .jvp-kachel-disabled {
+    @apply opacity-60 cursor-not-allowed pointer-events-none;
+    background: #e4e8ec !important;
+    border-color: #b8c0ca !important;
+  }
+
+  /* ---- Stat-Karten (wie styles.css .jvp-stat-card) ---- */
+  .stat-card {
+    @apply card p-4 border-l-4;
+  }
+  .stat-value { @apply text-3xl font-extrabold text-jhh-primary leading-none; }
+  .stat-label { @apply text-xs text-jhh-text-light mt-1; }
+
+  /* Zentrale Spalte: Header-Inhalt und Seiteninhalt (1440px max) */
+  .page-container {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 90rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--page-padding-x);
+    padding-right: var(--page-padding-x);
+  }
+
+  /* ---- Prototyp-Banner: volle Balkenbreite, Inhalt in page-container ---- */
+  .prototype-banner {
+    @apply sticky top-0 z-50 shrink-0 w-full
+           min-h-0 text-xs font-semibold overflow-hidden;
+    height: var(--layout-banner-h);
+    background: #f6c542;
+    color: #222222;
+    border-bottom: 1px solid #c49a16;
+  }
+
+  .prototype-banner__row {
+    @apply flex items-center flex-nowrap gap-2 w-full min-w-0 h-full;
+  }
+
+  .prototype-banner__select {
+    @apply text-xs font-medium px-2 py-0.5 border border-yellow-600 rounded min-w-0 flex-1;
+    max-width: 24rem;
+    background: #fffde7;
+    color: #4a3800;
+    height: 1.625rem;
+  }
+
+  .prototype-banner__label {
+    @apply shrink-0 whitespace-nowrap;
+  }
+
+  .process-steps-scroll {
+    @apply flex flex-nowrap items-center gap-0 list-none p-0 m-0 overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .page-bleed-x {
+    margin-left: calc(-1 * var(--page-padding-x));
+    margin-right: calc(-1 * var(--page-padding-x));
+  }
+}

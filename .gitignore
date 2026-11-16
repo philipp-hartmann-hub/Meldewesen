@@ -1,0 +1,24 @@
+# Abhängigkeiten & Build
+node_modules/
+dist/
+build/
+.vite/
+
+# Umgebung & Geheimnisse
+.env
+.env.*
+!.env.example
+.env.local
+backend/uploads/
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+
+# Lokale Tools (GitHub CLI, nicht committen)
+.tools/
+.gh-login.log
