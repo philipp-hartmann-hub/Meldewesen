@@ -14,7 +14,7 @@ Chronologisches Änderungsprotokoll zum Prototyp. Ergänzt Umsetzungsdokumente (
 - **Umfang:** Fall-Bündelung und Fall-Detail halten den API-Client in einem Ref. Der Lade-Effekt hängt nicht mehr vom Client-Objekt ab, das bei jedem Render neu entsteht. Sonstige Effekte im Frontend hatten `api` nicht in der Abhängigkeitsliste.
 - **Code:** `FallBuendelungPanel.jsx`, `FallDetail.jsx`
 - **Dokumentation:** dieser Eintrag
-- **Commit:** ausstehend
+- **Commit:** `cddfa04`
 
 ### 2026-11-19 – Anzeige folgt dem Fall-Pfad
 
