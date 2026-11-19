@@ -9,6 +9,13 @@ Chronologisches Änderungsprotokoll zum Prototyp. Ergänzt Umsetzungsdokumente (
 
 ## Einträge (neueste zuerst)
 
+### 2026-11-19 – Fall-Ansichten laden nicht mehr in einer Schleife
+
+- **Umfang:** Fall-Bündelung und Fall-Detail halten den API-Client in einem Ref. Der Lade-Effekt hängt nicht mehr vom Client-Objekt ab, das bei jedem Render neu entsteht. Sonstige Effekte im Frontend hatten `api` nicht in der Abhängigkeitsliste.
+- **Code:** `FallBuendelungPanel.jsx`, `FallDetail.jsx`
+- **Dokumentation:** dieser Eintrag
+- **Commit:** ausstehend
+
 ### 2026-11-19 – Anzeige folgt dem Fall-Pfad
 
 - **Umfang:** Schrittleiste, Banner und Einreichungsdialog nennen dieselbe Folge: Entwurf → Eingereicht → Zentrale bündelt → DGL prüft → SL → AL/VAL entscheidet → eGPA/ERV → Abschluss. Der aktive Schritt kommt aus Meldungs- und Fallstatus. Eine DGL-Rückgabe markiert „DGL prüft“. Zeugenbefragung steht nicht mehr in der Leiste. An einer Meldung ohne Fall gibt es keine Aktionen für fachliche Prüfung, beBPo, eGPA oder Abschluss, sondern den Hinweis „Wartet auf Bündelung durch die Zentrale“.

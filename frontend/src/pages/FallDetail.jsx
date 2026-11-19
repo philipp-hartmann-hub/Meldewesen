@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PageLayout from '../components/layout/PageLayout'
 import FallProzessLeiste from '../components/emeldewesen/FallProzessLeiste'
@@ -21,6 +21,8 @@ export default function FallDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const api = useApiClient()
+  const apiRef = useRef(api)
+  apiRef.current = api
   const { darfBuendeln, darfFallPruefen, istAL, istVAL, istStationsleitung } = useRolle()
 
   const [fall, setFall] = useState(null)
@@ -38,10 +40,10 @@ export default function FallDetail() {
     setLaden(true)
     setFehler('')
     try {
-      const res = await api.get(`/api/faelle/${id}`)
+      const res = await apiRef.current.get(`/api/faelle/${id}`)
       setFall(res.data)
       if (darfBuendeln && res.data?.darfBearbeiten) {
-        const u = await api.get('/api/faelle/ungebundene-meldungen')
+        const u = await apiRef.current.get('/api/faelle/ungebundene-meldungen')
         setUngebundene(u.data || [])
       }
     } catch (e) {
@@ -49,7 +51,7 @@ export default function FallDetail() {
     } finally {
       setLaden(false)
     }
-  }, [api, id, darfBuendeln])
+  }, [id, darfBuendeln])
 
   useEffect(() => { ladenFall() }, [ladenFall])
 
@@ -75,7 +77,7 @@ export default function FallDetail() {
   async function handleWeiterleitenDgl() {
     if (!window.confirm('Fall gebündelt an die Dienstgruppenleitung weiterleiten?')) return
     await runAktion(
-      () => api.post(`/api/faelle/${id}/weiterleiten-dgl`),
+      () => apiRef.current.post(`/api/faelle/${id}/weiterleiten-dgl`),
       'Weitergeleitet.',
     )
   }
@@ -83,7 +85,7 @@ export default function FallDetail() {
   async function handleRueckgabe(e) {
     e.preventDefault()
     await runAktion(
-      () => api.post(`/api/faelle/${id}/rueckgabe`, {
+      () => apiRef.current.post(`/api/faelle/${id}/rueckgabe`, {
         kommentar: rueckgabeText,
         meldungIds: [...rueckgabeAuswahl],
       }),
@@ -96,7 +98,7 @@ export default function FallDetail() {
   async function handleWeiterleitenSl() {
     if (!window.confirm('Qualität ok – Fall als Fallmeldung an die Stationsleitung weiterleiten?')) return
     await runAktion(
-      () => api.post(`/api/faelle/${id}/weiterleiten-sl`),
+      () => apiRef.current.post(`/api/faelle/${id}/weiterleiten-sl`),
       'An Stationsleitung weitergeleitet.',
     )
   }
@@ -104,7 +106,7 @@ export default function FallDetail() {
   async function handleWeiterleitenAl() {
     if (!window.confirm('Fallmeldung an AL/VAL zur Meldepflicht-Entscheidung weiterleiten?')) return
     await runAktion(
-      () => api.post(`/api/faelle/${id}/weiterleiten-al`),
+      () => apiRef.current.post(`/api/faelle/${id}/weiterleiten-al`),
       'Zur Meldepflicht-Entscheidung weitergeleitet.',
     )
   }
@@ -115,7 +117,7 @@ export default function FallDetail() {
       : 'nicht meldepflichtig (eGPA am Fall, ohne beBPo)'
     if (!window.confirm(`Fall als ${label} entscheiden?`)) return
     await runAktion(
-      () => api.post(`/api/faelle/${id}/entscheid-meldepflicht`, {
+      () => apiRef.current.post(`/api/faelle/${id}/entscheid-meldepflicht`, {
         meldepflichtig,
         kommentar: entscheidKommentar.trim() || undefined,
       }),
@@ -129,10 +131,10 @@ export default function FallDetail() {
     if (bestaetigung && !window.confirm(bestaetigung)) return
 
     const routes = {
-      versandfaehig: () => api.post(`/api/faelle/${id}/versandfaehig`),
-      bepo: () => api.post(`/api/faelle/${id}/xjustiz-versand`),
-      egpa: () => api.post(`/api/faelle/${id}/verakten`),
-      abschliessen: () => api.post(`/api/faelle/${id}/abschliessen`),
+      versandfaehig: () => apiRef.current.post(`/api/faelle/${id}/versandfaehig`),
+      bepo: () => apiRef.current.post(`/api/faelle/${id}/xjustiz-versand`),
+      egpa: () => apiRef.current.post(`/api/faelle/${id}/verakten`),
+      abschliessen: () => apiRef.current.post(`/api/faelle/${id}/abschliessen`),
     }
     if (!routes[key]) return
     await runAktion(routes[key], 'Erledigt.')
@@ -141,7 +143,7 @@ export default function FallDetail() {
   async function handleEntfernen(meldungId) {
     if (!window.confirm('Meldung aus diesem Fall entfernen?')) return
     await runAktion(
-      () => api.delete(`/api/faelle/${id}/meldungen/${meldungId}`),
+      () => apiRef.current.delete(`/api/faelle/${id}/meldungen/${meldungId}`),
       'Entfernt.',
     )
   }
@@ -153,7 +155,7 @@ export default function FallDetail() {
       return
     }
     await runAktion(
-      () => api.post(`/api/faelle/${id}/meldungen`, { meldungIds: [...hinzufuegenAuswahl] }),
+      () => apiRef.current.post(`/api/faelle/${id}/meldungen`, { meldungIds: [...hinzufuegenAuswahl] }),
       'Meldungen hinzugefügt.',
     )
     setHinzufuegenAuswahl(new Set())

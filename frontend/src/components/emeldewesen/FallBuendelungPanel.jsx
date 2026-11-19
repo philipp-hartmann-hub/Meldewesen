@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import FallStatusBadge from '../shared/FallStatusBadge'
 import { useApiClient } from '../../api/client'
@@ -7,6 +7,8 @@ import { formatDatumKurz, formatGefangene, formatTatzeit, getMeldungstypLabel } 
 
 export default function FallBuendelungPanel({ embedded = false }) {
   const api = useApiClient()
+  const apiRef = useRef(api)
+  apiRef.current = api
   const { darfBuendeln, darfFallPruefen, istAL, istVAL, istStationsleitung } = useRolle()
 
   const [faelle, setFaelle] = useState([])
@@ -23,10 +25,10 @@ export default function FallBuendelungPanel({ embedded = false }) {
     setLaden(true)
     setFehler('')
     try {
-      const reqs = [api.get('/api/faelle')]
+      const reqs = [apiRef.current.get('/api/faelle')]
       if (darfBuendeln) {
-        reqs.push(api.get('/api/faelle/ungebundene-meldungen'))
-        reqs.push(api.get('/api/faelle/buendlungs-vorschlaege'))
+        reqs.push(apiRef.current.get('/api/faelle/ungebundene-meldungen'))
+        reqs.push(apiRef.current.get('/api/faelle/buendlungs-vorschlaege'))
       }
       const results = await Promise.all(reqs)
       setFaelle(results[0].data || [])
@@ -39,7 +41,7 @@ export default function FallBuendelungPanel({ embedded = false }) {
     } finally {
       setLaden(false)
     }
-  }, [api, darfBuendeln])
+  }, [darfBuendeln])
 
   useEffect(() => { ladenDaten() }, [ladenDaten])
 
@@ -71,7 +73,7 @@ export default function FallBuendelungPanel({ embedded = false }) {
     setSpeichern(true)
     setFehler('')
     try {
-      const res = await api.post('/api/faelle', {
+      const res = await apiRef.current.post('/api/faelle', {
         bezeichnung: bezeichnung.trim() || undefined,
         meldungIds: [...auswahl],
       })
