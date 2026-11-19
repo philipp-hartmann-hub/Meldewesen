@@ -84,8 +84,8 @@ export function registerFaelleRoutes(router, prisma) {
 
   router.post('/faelle/:id/rueckgabe', async (req, res, next) => {
     try {
-      const { kommentar } = req.body || {}
-      const result = await rueckgabeAnAk(prisma, req.mockNutzer, req.params.id, { kommentar })
+      const { kommentar, meldungIds } = req.body || {}
+      const result = await rueckgabeAnAk(prisma, req.mockNutzer, req.params.id, { kommentar, meldungIds })
       res.json({ data: result, message: 'Fall wurde an die Zentrale zurückgegeben.' })
     } catch (err) { next(err) }
   })

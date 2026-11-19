@@ -10,7 +10,7 @@ import {
   istBeweismittelNachreichungUeberfaellig,
   pruefeBeweismittelFristEskalationBatch,
 } from './beweismittelEskalationService.js'
-import { benachrichtigeZuweisung } from './benachrichtigungService.js'
+import { benachrichtigeZuweisung, erstelleBenachrichtigungen, BENACHRICHTIGUNG_TYPEN } from './benachrichtigungService.js'
 import {
   setGruppenAufgabeZuweisung,
   setMeldungZuweisung,
@@ -26,6 +26,15 @@ export const AUFGABEN_TYPEN = {
   ZEUGENAUSSAGE_INHAFTIERTER_ERFASSEN: 'zeugenaussage_inhaftierter_erfassen',
   FACHLICHE_PRUEFUNG: 'fachliche_pruefung',
   BEWEISMITTEL_NACHREICHEN: 'beweismittel_nachreichen',
+  DGL_RUECKGABE: 'dgl_rueckgabe',
+  FALL_PRUEFEN: 'fall_pruefen',
+  FALL_WEITERLEITEN: 'fall_weiterleiten',
+  FALL_ENTSCHEID: 'fall_entscheid',
+  FALL_ERV: 'fall_erv',
+  FALL_RUECKGABE: 'fall_rueckgabe',
+  MELDUNG_BEPO: 'meldung_bepo',
+  MELDUNG_EGPA: 'meldung_egpa',
+  MELDUNG_ABSCHLUSS: 'meldung_abschluss',
 }
 
 export const ZUWEISUNG = {
@@ -35,12 +44,104 @@ export const ZUWEISUNG = {
 
 const PRUEF_ZEUGE_ID = 'pruef'
 export const BEWEISMITTEL_ZEUGE_ID = 'beweismittel'
+export const DGL_RUECKGABE_ZEUGE_ID = 'dgl'
 
 const TYP_LABELS = {
   [AUFGABEN_TYPEN.ZEUGENAUSSAGE_BESTAETIGEN]: 'Zeugenaussage ausfüllen',
   [AUFGABEN_TYPEN.ZEUGENAUSSAGE_INHAFTIERTER_ERFASSEN]: 'Zeugenaussage Inhaftierte/r aufnehmen',
   [AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG]: 'Fachliche Prüfung',
   [AUFGABEN_TYPEN.BEWEISMITTEL_NACHREICHEN]: 'Beweismittel nachreichen',
+  [AUFGABEN_TYPEN.DGL_RUECKGABE]: 'Meldung nach DGL-Rückgabe überarbeiten',
+  [AUFGABEN_TYPEN.FALL_PRUEFEN]: 'Fall prüfen',
+  [AUFGABEN_TYPEN.FALL_WEITERLEITEN]: 'Fall weiterleiten',
+  [AUFGABEN_TYPEN.FALL_ENTSCHEID]: 'Meldepflicht entscheiden',
+  [AUFGABEN_TYPEN.FALL_ERV]: 'ERV am Fall',
+  [AUFGABEN_TYPEN.FALL_RUECKGABE]: 'Fall nach Rückgabe bearbeiten',
+  [AUFGABEN_TYPEN.MELDUNG_BEPO]: 'Versand (beBPo)',
+  [AUFGABEN_TYPEN.MELDUNG_EGPA]: 'eGPA-Veraktung',
+  [AUFGABEN_TYPEN.MELDUNG_ABSCHLUSS]: 'Abschluss',
+}
+
+const FALL_AUFGABEN_TYPEN = new Set([
+  AUFGABEN_TYPEN.FALL_PRUEFEN,
+  AUFGABEN_TYPEN.FALL_WEITERLEITEN,
+  AUFGABEN_TYPEN.FALL_ENTSCHEID,
+  AUFGABEN_TYPEN.FALL_ERV,
+  AUFGABEN_TYPEN.FALL_RUECKGABE,
+])
+
+/** Offener Fall-Schritt für die zuständige Rolle. null, wenn gerade nichts zu tun ist. */
+export function beschreibeOffeneFallAufgabe(fall) {
+  if (!fall?.fallNr) return null
+  const nr = fall.fallNr
+  if (fall.status === 'ZUR_DGL') {
+    return { rollen: ['dienstgruppenleitung'], typ: AUFGABEN_TYPEN.FALL_PRUEFEN, titel: `Fall ${nr} prüfen` }
+  }
+  if (fall.status === 'ZUR_SL') {
+    return { rollen: ['stationsleitung'], typ: AUFGABEN_TYPEN.FALL_WEITERLEITEN, titel: `Fall ${nr} weiterleiten` }
+  }
+  if (fall.status === 'ZUR_AL') {
+    return {
+      rollen: ['anstaltsleitung', 'val'],
+      typ: AUFGABEN_TYPEN.FALL_ENTSCHEID,
+      titel: `Meldepflicht für Fall ${nr} entscheiden`,
+    }
+  }
+  if (fall.status === 'ZURUECK_AK') {
+    return {
+      rollen: ['arbeitskoordination'],
+      typ: AUFGABEN_TYPEN.FALL_RUECKGABE,
+      titel: `Fall ${nr} nach DGL-Rückgabe bearbeiten`,
+    }
+  }
+  if (fall.status === 'ERV_WEG' && !fall.abgeschlossenAm) {
+    let titel = `Fall ${nr} abschließen`
+    if (!fall.versandfaehigAm) titel = `Fall ${nr} als versandfähig markieren`
+    else if (!fall.bepoVersendetAm) titel = `Fall ${nr} per beBPo versenden`
+    else if (!fall.egpaVeraktetAm) titel = `Fall ${nr} in eGPA verakten`
+    return { rollen: ['anstaltsleitung', 'val'], typ: AUFGABEN_TYPEN.FALL_ERV, titel }
+  }
+  if (fall.status === 'EGPA_INTERN' && !fall.abgeschlossenAm) {
+    const titel = fall.egpaVeraktetAm
+      ? `Fall ${nr} abschließen`
+      : `Fall ${nr} in eGPA verakten`
+    return { rollen: ['anstaltsleitung', 'val'], typ: AUFGABEN_TYPEN.FALL_ERV, titel }
+  }
+  return null
+}
+
+function fallGruppenAufgabe(fall, beschreibung) {
+  return {
+    id: encodeAufgabeId(fall.id, beschreibung.typ, 'fall'),
+    typ: beschreibung.typ,
+    titel: beschreibung.titel,
+    status: 'OFFEN',
+    meldungId: null,
+    fallId: fall.id,
+    meldungsNr: fall.fallNr,
+    meldungsTyp: null,
+    meldungsStatus: fall.status,
+    prioritaet: 0,
+    dringend: false,
+    zeugeId: null,
+    zeugeName: '',
+    fristBis: null,
+    gesendetAm: fall.aktualisiertAm,
+    erstelltAm: fall.erstelltAm,
+    nachricht: fall.rueckgabeGrund || fall.bezeichnung || '',
+    sachverhalt: fall.bezeichnung || '',
+    gefangene: null,
+    zuweisung: ZUWEISUNG.GRUPPE,
+    fallAufgabe: true,
+  }
+}
+
+function sammleFallAufgaben(faelle, nutzer) {
+  return faelle.flatMap(fall => {
+    const beschreibung = beschreibeOffeneFallAufgabe(fall)
+    if (!beschreibung || !beschreibung.rollen.includes(nutzer.rolle)) return []
+    return [fallGruppenAufgabe(fall, beschreibung)]
+  })
 }
 
 export function istBeweismittelRueckgabeGrund(grund) {
@@ -281,46 +382,83 @@ function sammleGruppenAufgabenAusMeldung(meldung, nutzer) {
   return aufgaben
 }
 
+function versandErledigt(meldung) {
+  return (meldung.xJustizVersand || []).some(v => ['VERSENDET', 'BESTAETIGT'].includes(v.status))
+}
+
+function egpaErledigt(meldung) {
+  return (meldung.veraktungen || []).some(v => v.status === 'UEBERMITTELT')
+}
+
+/** Nächster noch offener Schritt, wie in der Schrittleiste der Meldung. */
+export function naechsterProzessschritt(meldung) {
+  if (!meldung || meldung.fallId || meldung.status === 'ARCHIVED' || meldung.status === 'DRAFT') return null
+  const hatZeugen = meldung.meldungsTyp === 'STRAFANZEIGE'
+    && Array.isArray(meldung.metadaten?.zeugen)
+    && meldung.metadaten.zeugen.length > 0
+  if (hatZeugen && !alleZeugenaussagenVollstaendig(meldung.metadaten)) return 'zeugen'
+  const bepo = versandErledigt(meldung)
+  const egpa = egpaErledigt(meldung)
+  const pruefungAufgenommen = meldung.status === 'IN_PROGRESS' || bepo || egpa
+  if (!pruefungAufgenommen) return 'bearbeitung'
+  if (meldung.ervRelevant && !bepo) return 'bepo'
+  if (meldung.ervRelevant && !egpa) return 'egpa'
+  return 'archiv'
+}
+
+const PROZESS_AUFGABEN = {
+  bearbeitung: {
+    rollen: ['val', 'anstaltsleitung'],
+    typ: AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG,
+    zeugeId: PRUEF_ZEUGE_ID,
+    titel: m => `Fachliche Prüfung ${m.meldungsNr}`,
+    nachricht: 'Alle vorherigen Schritte sind erledigt. Bitte nehmen Sie die fachliche Prüfung auf.',
+  },
+  bepo: {
+    rollen: ['val', 'anstaltsleitung'],
+    typ: AUFGABEN_TYPEN.MELDUNG_BEPO,
+    zeugeId: 'bepo',
+    titel: m => `${m.meldungsNr} per beBPo versenden`,
+    nachricht: 'Fachliche Prüfung ist erfolgt. Nächster Schritt: Versand per beBPo.',
+    zielPfad: m => `/meldungen/${m.id}`,
+  },
+  egpa: {
+    rollen: ['val', 'anstaltsleitung'],
+    typ: AUFGABEN_TYPEN.MELDUNG_EGPA,
+    zeugeId: 'egpa',
+    titel: m => `${m.meldungsNr} in eGPA verakten`,
+    nachricht: 'beBPo-Versand ist erfolgt. Nächster Schritt: eGPA-Veraktung.',
+    zielPfad: m => `/meldungen/${m.id}`,
+  },
+  archiv: {
+    rollen: ['val', 'anstaltsleitung'],
+    typ: AUFGABEN_TYPEN.MELDUNG_ABSCHLUSS,
+    zeugeId: 'abschluss',
+    titel: m => `${m.meldungsNr} abschließen`,
+    nachricht: 'Nächster Schritt: Meldung abschließen.',
+    zielPfad: m => `/meldungen/${m.id}`,
+  },
+}
+
 function sammlePruefAufgabeAusMeldung(meldung, mockNutzer) {
-  if (!darfPruefAufgabenSehen(mockNutzer)) return null
-  if (meldung.status === 'DRAFT') return null
-
-  const pruefbereit = istPruefbereit(meldung)
-
-  if (meldung.status === 'SUBMITTED') {
-    if (!pruefbereit) return null
-    const gesendetAm = zeugenAbschlussZeitpunkt(meldung.metadaten)
-      || meldung.erstelltAm
-    return aufgabeBasis(
-      meldung,
-      AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG,
-      PRUEF_ZEUGE_ID,
-      {
-        status: 'OFFEN',
-        gesendetAm,
-        nachricht:
-          'Alle Zeugenaussagen liegen vor. Bitte nehmen Sie die fachliche Prüfung auf '
-          + '(Übernahme in den Status „Fachliche Prüfung“ innerhalb von 24 Stunden, SLA-Prototyp).',
-      },
-      { zuweisung: ZUWEISUNG.PERSOENLICH },
-    )
-  }
-
-  if (['IN_PROGRESS', 'FORWARDED', 'ARCHIVED'].includes(meldung.status) && pruefbereit) {
-    return aufgabeBasis(
-      meldung,
-      AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG,
-      PRUEF_ZEUGE_ID,
-      {
-        status: 'ERLEDIGT',
-        gesendetAm: zeugenAbschlussZeitpunkt(meldung.metadaten) || meldung.erstelltAm,
-        nachricht: 'Fachliche Prüfung wurde aufgenommen.',
-      },
-      { zuweisung: ZUWEISUNG.PERSOENLICH },
-    )
-  }
-
-  return null
+  const schritt = naechsterProzessschritt(meldung)
+  const beschreibung = PROZESS_AUFGABEN[schritt]
+  if (!beschreibung || !beschreibung.rollen.includes(mockNutzer.rolle)) return null
+  return aufgabeBasis(
+    meldung,
+    beschreibung.typ,
+    beschreibung.zeugeId,
+    {
+      status: 'OFFEN',
+      gesendetAm: zeugenAbschlussZeitpunkt(meldung.metadaten) || meldung.aktualisiertAm || meldung.erstelltAm,
+      nachricht: beschreibung.nachricht,
+    },
+    {
+      zuweisung: ZUWEISUNG.PERSOENLICH,
+      titel: beschreibung.titel(meldung),
+      ...(beschreibung.zielPfad ? { zielPfad: beschreibung.zielPfad(meldung), aktionLabel: 'Meldung öffnen' } : {}),
+    },
+  )
 }
 
 function sammleBeweismittelAufgabeAusMeldung(meldung, nutzer, beweismittelEmpfaengerId = null) {
@@ -425,12 +563,52 @@ export function sammleBeweismittelDispositionAufgaben(meldung, beweismittelEmpfa
   }]
 }
 
+export async function benachrichtigeNaechstenProzessschritt(prisma, meldung) {
+  const schritt = naechsterProzessschritt(meldung)
+  const beschreibung = PROZESS_AUFGABEN[schritt]
+  if (!beschreibung) return
+  const jva = meldung.gefangene?.jva
+  if (!jva) return
+  const leute = await prisma.bedienstete.findMany({
+    where: { bediensteterJVA: jva, bediensteterRolle: { in: beschreibung.rollen } },
+    select: { bediensteterID: true },
+  })
+  if (!leute.length) return
+  const titel = beschreibung.titel(meldung)
+  await erstelleBenachrichtigungen(prisma, leute.map(b => ({
+    empfaengerId: b.bediensteterID,
+    typ: BENACHRICHTIGUNG_TYPEN.AUFGABE_NEU,
+    text: `Neue Aufgabe: ${titel}`,
+    meldungId: meldung.id,
+    aufgabeId: encodeAufgabeId(meldung.id, beschreibung.typ, beschreibung.zeugeId),
+  })))
+}
+
+function sammleDglRueckgabeAufgabe(meldung, nutzer) {
+  if (meldung.status !== 'DRAFT') return []
+  const rueckgabe = meldung.metadaten?.rueckgabeDgl
+  if (!rueckgabe) return []
+  if (meldung.zustaendig?.bediensteterID !== nutzer.nutzerId) return []
+  return [aufgabeBasis(
+    meldung,
+    AUFGABEN_TYPEN.DGL_RUECKGABE,
+    DGL_RUECKGABE_ZEUGE_ID,
+    {
+      status: 'OFFEN',
+      gesendetAm: rueckgabe.zurueckgegebenAm || meldung.aktualisiertAm,
+      nachricht: rueckgabe.kommentar || 'Die Dienstgruppenleitung hat diese Meldung zur Nachbesserung zurückgegeben.',
+    },
+    { zuweisung: ZUWEISUNG.PERSOENLICH },
+  )]
+}
+
 function sammleAlleAufgabenAusMeldung(meldung, nutzer, beweismittelEmpfaengerId = null) {
   const persoenlich = sammlePersoenlicheAufgabenAusMeldung(meldung, nutzer)
   const gruppe = sammleGruppenAufgabenAusMeldung(meldung, nutzer)
   const beweismittel = sammleBeweismittelAufgabeAusMeldung(meldung, nutzer, beweismittelEmpfaengerId)
+  const dglRueckgabe = sammleDglRueckgabeAufgabe(meldung, nutzer)
   const pruefAufgabe = sammlePruefAufgabeAusMeldung(meldung, nutzer)
-  const basis = [...persoenlich, ...gruppe, ...beweismittel]
+  const basis = [...persoenlich, ...gruppe, ...beweismittel, ...dglRueckgabe]
   return pruefAufgabe ? [...basis, pruefAufgabe] : basis
 }
 
@@ -478,7 +656,7 @@ export async function listArbeitskorbAufgaben(prisma, mockNutzer, { status, bere
 
   let meldungen = await prisma.meldung.findMany({
     where,
-    include: { gefangene: true },
+    include: { gefangene: true, zustaendig: true, xJustizVersand: true, veraktungen: true },
     orderBy: { erstelltAm: 'desc' },
   })
 
@@ -491,6 +669,13 @@ export async function listArbeitskorbAufgaben(prisma, mockNutzer, { status, bere
     }),
   )
   let aufgaben = aufgabenNested.flat()
+
+  const fallWhere = {
+    status: { in: ['ZUR_DGL', 'ZUR_SL', 'ZUR_AL', 'ZURUECK_AK', 'ERV_WEG', 'EGPA_INTERN'] },
+  }
+  if (!siehtAlleJVAs) fallWhere.jva = nutzer.nutzerJva
+  const faelle = await prisma.meldungsFall.findMany({ where: fallWhere })
+  aufgaben = aufgaben.concat(sammleFallAufgaben(faelle, nutzer))
 
   if (status === 'OFFEN') aufgaben = aufgaben.filter(a => a.status === 'OFFEN')
   else if (status === 'ERLEDIGT') aufgaben = aufgaben.filter(a => a.status === 'ERLEDIGT')
@@ -526,9 +711,36 @@ export async function getArbeitskorbAufgabe(prisma, mockNutzer, aufgabeId) {
     throw err
   }
 
+  if (FALL_AUFGABEN_TYPEN.has(parsed.typ)) {
+    const fall = await prisma.meldungsFall.findUnique({ where: { id: parsed.meldungId } })
+    if (!fall) {
+      const err = new Error('Fall nicht gefunden.')
+      err.status = 404
+      throw err
+    }
+    if (!nutzer.siehtAlleJVAs && fall.jva !== nutzer.nutzerJva) {
+      const err = new Error('Kein Zugriff auf diesen Fall.')
+      err.status = 403
+      throw err
+    }
+    const beschreibung = beschreibeOffeneFallAufgabe(fall)
+    if (!beschreibung || beschreibung.typ !== parsed.typ || !beschreibung.rollen.includes(nutzer.rolle)) {
+      const err = new Error('Aufgabe nicht gefunden oder nicht für Sie bestimmt.')
+      err.status = 404
+      throw err
+    }
+    return { data: fallGruppenAufgabe(fall, beschreibung) }
+  }
+
   const meldung = await prisma.meldung.findUnique({
     where: { id: parsed.meldungId },
-    include: { gefangene: true, statusVerlauf: { orderBy: { erstelltAm: 'asc' } } },
+    include: {
+      gefangene: true,
+      zustaendig: true,
+      xJustizVersand: true,
+      veraktungen: true,
+      statusVerlauf: { orderBy: { erstelltAm: 'asc' } },
+    },
   })
   if (!meldung) {
     const err = new Error('Meldung nicht gefunden.')
@@ -902,7 +1114,7 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
       err.status = 403
       throw err
     }
-    if (meldung.status !== 'SUBMITTED') {
+    if (!['SUBMITTED', 'FORWARDED'].includes(meldung.status)) {
       const err = new Error('Die Meldung ist nicht mehr zur Prüfung vorgemerkt.')
       err.status = 409
       throw err
@@ -930,6 +1142,16 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
         },
       }),
     ])
+
+    await benachrichtigeNaechstenProzessschritt(prisma, {
+      ...updated,
+      gefangene: meldung.gefangene,
+      metadaten: meldung.metadaten,
+      meldungsTyp: meldung.meldungsTyp,
+      ervRelevant: meldung.ervRelevant,
+      xJustizVersand: meldung.xJustizVersand,
+      veraktungen: meldung.veraktungen,
+    })
 
     const neu = (await sammleAufgabenFuerMeldung(
       prisma,
@@ -1058,6 +1280,7 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
     meta.zeugen = zeugen
     meta.zeugenFolgeaktionen = { ...fa, gruppenAufgaben: gruppen }
 
+    const vorherVollstaendig = alleZeugenaussagenVollstaendig(meldung.metadaten)
     const [updated] = await prisma.$transaction([
       prisma.meldung.update({
         where: { id: meldung.id },
@@ -1072,6 +1295,16 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
         },
       }),
     ])
+    if (!vorherVollstaendig) {
+      await benachrichtigeNaechstenProzessschritt(prisma, {
+        ...updated,
+        gefangene: meldung.gefangene,
+        fallId: meldung.fallId,
+        meldungsTyp: meldung.meldungsTyp,
+        meldungsNr: meldung.meldungsNr,
+        metadaten: meta,
+      })
+    }
 
     const neu = sammlePersoenlicheAufgabenAusMeldung(
       { ...updated, gefangene: meldung.gefangene },
@@ -1134,6 +1367,7 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
   meta.zeugenFolgeaktionen = fa
 
   const kommentar = `Arbeitskorb: Zeugenaussage bestätigt (${nutzer.nutzerId}).`
+  const vorherVollstaendig = alleZeugenaussagenVollstaendig(meldung.metadaten)
 
   const [updated] = await prisma.$transaction([
     prisma.meldung.update({
@@ -1149,6 +1383,17 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
       },
     }),
   ])
+
+  if (!vorherVollstaendig) {
+    await benachrichtigeNaechstenProzessschritt(prisma, {
+      ...updated,
+      gefangene: meldung.gefangene,
+      fallId: meldung.fallId,
+      meldungsTyp: meldung.meldungsTyp,
+      meldungsNr: meldung.meldungsNr,
+      metadaten: meta,
+    })
+  }
 
   const neu = sammlePersoenlicheAufgabenAusMeldung(
     { ...updated, gefangene: meldung.gefangene },

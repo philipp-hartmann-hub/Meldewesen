@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBenachrichtigungen } from '../../hooks/useBenachrichtigungen'
+import { fallIdAusAufgabeId, meldungDirektAusAufgabeId } from '../../utils/arbeitskorb'
 
 function formatZeit(iso) {
   if (!iso) return ''
@@ -14,6 +15,10 @@ function formatZeit(iso) {
 }
 
 function linkFuerBenachrichtigung(n) {
+  const meldungDirekt = meldungDirektAusAufgabeId(n.aufgabeId)
+  if (meldungDirekt) return meldungDirekt
+  const fallId = fallIdAusAufgabeId(n.aufgabeId)
+  if (fallId) return `/faelle/${fallId}`
   if (n.aufgabeId) return `/arbeitskorb/aufgabe/${encodeURIComponent(n.aufgabeId)}`
   if (n.meldungId) return `/meldungen/${n.meldungId}`
   return null

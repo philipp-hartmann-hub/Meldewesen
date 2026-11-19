@@ -30,6 +30,8 @@ import {
 import {
   AUFGABEN_TYPEN,
   BEWEISMITTEL_ZEUGE_ID,
+  benachrichtigeNaechstenProzessschritt,
+  naechsterProzessschritt,
   encodeAufgabeId,
 } from '../services/arbeitskorbService.js'
 import {
@@ -39,6 +41,10 @@ import {
 } from '../services/zuweisungMetaService.js'
 import { compareMeldungstypByLabel } from '../utils/meldungstypLabels.js'
 import { compareMeldungsStatusByLabel } from '../utils/meldungsStatusLabels.js'
+import {
+  meldungWirdAmFallBearbeitet,
+  pruefeStatusUebergang,
+} from '../utils/meldungStatusUebergaenge.js'
 import { istDringendOderUeberfaellig } from '../utils/meldungenSla.js'
 import { registerMeldungAnhaengeRoutes } from './meldungAnhaenge.js'
 import { registerArbeitskorbRoutes } from './arbeitskorb.js'
@@ -512,30 +518,33 @@ router.patch('/meldungen/:id', async (req, res, next) => {
 
 router.patch('/meldungen/:id/status', async (req, res, next) => {
   try {
-    const { darfMeldungAbschliessen, darfWeiterleiten, nutzerId, rolle, istVAL, istAL } = req.mockNutzer
-    const { status, kommentar, rueckgabeErgaenzung } = req.body
-    if (status === 'IN_PROGRESS' && !istVAL && !istAL) {
-      return res.status(403).json({
-        error: 'Keine Berechtigung',
-        message: 'Nur VAL oder Anstaltsleitung können die fachliche Prüfung aufnehmen.',
+    const { nutzerId, rolle } = req.mockNutzer
+    let { status, kommentar, rueckgabeErgaenzung } = req.body
+    if (!status) {
+      return res.status(400).json({
+        error: 'Status fehlt',
+        message: 'Bitte geben Sie einen Zielstatus an.',
       })
-    }
-    if (['ARCHIVED'].includes(status) && !darfMeldungAbschliessen)
-      return res.status(403).json({ error: 'Keine Berechtigung zum Abschließen', message: 'Keine Berechtigung zum Abschließen' })
-    if (['FORWARDED'].includes(status) && !darfWeiterleiten)
-      return res.status(403).json({ error: 'Keine Berechtigung zum Weiterleiten', message: 'Keine Berechtigung zum Weiterleiten' })
-    if (status === 'DRAFT' && rueckgabeErgaenzung !== undefined) {
-      if (!['val', 'anstaltsleitung'].includes(rolle))
-        return res.status(403).json({ error: 'Keine Berechtigung zur Rückgabe', message: 'Nur VAL/AL dürfen Meldungen zurückgeben.' })
-      if (!rueckgabeErgaenzung?.kommentar?.trim())
-        return res.status(400).json({ error: 'Kommentar fehlt', message: 'Ein Kommentar ist für die Rückgabe erforderlich.' })
     }
 
     const existing = await prisma.meldung.findUnique({
       where: { id: req.params.id },
-      include: { xJustizVersand: true, veraktungen: true },
+      include: { xJustizVersand: true, veraktungen: true, gefangene: true, fall: { select: { fallNr: true } } },
     })
     if (!existing) return res.status(404).json({ error: 'Meldung nicht gefunden', message: 'Meldung nicht gefunden' })
+
+    const fallHinweis = meldungWirdAmFallBearbeitet(existing, status)
+    if (fallHinweis) {
+      return res.status(409).json({ error: fallHinweis, message: fallHinweis })
+    }
+    const uebergangHinweis = pruefeStatusUebergang(existing.status, status, rolle)
+    if (uebergangHinweis) {
+      return res.status(409).json({ error: uebergangHinweis, message: uebergangHinweis })
+    }
+    const schrittVorher = naechsterProzessschritt(existing)
+    if (status === 'DRAFT' && rueckgabeErgaenzung !== undefined && !rueckgabeErgaenzung?.kommentar?.trim()) {
+      return res.status(400).json({ error: 'Kommentar fehlt', message: 'Ein Kommentar ist für die Rückgabe erforderlich.' })
+    }
 
     if (status === 'ARCHIVED' && existing.ervRelevant) {
       const hatBePo = existing.xJustizVersand?.some(
@@ -645,6 +654,18 @@ router.patch('/meldungen/:id/status', async (req, res, next) => {
           })
         }
       }
+      const aktuell = metaUpdate && typeof metaUpdate === 'object' ? metaUpdate : meta
+      if (aktuell.rueckgabeDgl) {
+        const verlauf = Array.isArray(aktuell.rueckgabeDglVerlauf) ? aktuell.rueckgabeDglVerlauf : []
+        metaUpdate = {
+          ...aktuell,
+          rueckgabeDglVerlauf: [
+            ...verlauf,
+            { ...aktuell.rueckgabeDgl, erneutEingereichtAm: new Date().toISOString() },
+          ],
+        }
+        delete metaUpdate.rueckgabeDgl
+      }
     }
 
     const bedienstete = await prisma.bedienstete.findUnique({ where: { bediensteterID: nutzerId } })
@@ -678,6 +699,23 @@ router.patch('/meldungen/:id/status', async (req, res, next) => {
         },
       }),
     ])
+
+    const schrittNachher = naechsterProzessschritt({
+      ...existing,
+      ...meldung,
+      gefangene: existing.gefangene,
+      xJustizVersand: existing.xJustizVersand,
+      veraktungen: existing.veraktungen,
+    })
+    if (schrittNachher && schrittNachher !== schrittVorher && schrittNachher !== 'zeugen') {
+      await benachrichtigeNaechstenProzessschritt(prisma, {
+        ...existing,
+        ...meldung,
+        gefangene: existing.gefangene,
+        xJustizVersand: existing.xJustizVersand,
+        veraktungen: existing.veraktungen,
+      })
+    }
 
     const nachreichung = metaUpdate?.beweismittelNachreichung
     if (
@@ -836,14 +874,12 @@ router.post('/meldungen/:id/verakten', async (req, res, next) => {
     }
     const meldung = await prisma.meldung.findUnique({
       where: { id: req.params.id },
-      include: { xJustizVersand: true, fall: true },
+      include: { xJustizVersand: true, fall: true, gefangene: true },
     })
     if (!meldung) return res.status(404).json({ error: 'Meldung nicht gefunden', message: 'Meldung nicht gefunden' })
-    if (meldung.fallId && meldung.fall && ['EGPA_INTERN', 'ERV_WEG'].includes(meldung.fall.status)) {
-      return res.status(409).json({
-        error: 'ERV erfolgt am gebündelten Fall.',
-        message: 'eGPA-Veraktung erfolgt am gebündelten Fall – bitte Fall-Detail öffnen.',
-      })
+    const fallHinweisVeraktung = meldungWirdAmFallBearbeitet(meldung)
+    if (fallHinweisVeraktung) {
+      return res.status(409).json({ error: fallHinweisVeraktung, message: fallHinweisVeraktung })
     }
 
     const hatBePo = meldung.xJustizVersand?.some(
@@ -866,6 +902,10 @@ router.post('/meldungen/:id/verakten', async (req, res, next) => {
         ausgefuehrtVonId: bedienstete?.id,
       },
     })
+    await benachrichtigeNaechstenProzessschritt(prisma, {
+      ...meldung,
+      veraktungen: [veraktung],
+    })
     res.json({ data: veraktung })
   } catch (err) { next(err) }
 })
@@ -879,14 +919,12 @@ router.post('/meldungen/:id/xjustiz-versand', async (req, res, next) => {
     }
     const meldung = await prisma.meldung.findUnique({
       where: { id: req.params.id },
-      include: { fall: true },
+      include: { fall: true, gefangene: true, veraktungen: true },
     })
     if (!meldung) return res.status(404).json({ error: 'Meldung nicht gefunden', message: 'Meldung nicht gefunden' })
-    if (meldung.fallId && meldung.fall?.status === 'ERV_WEG') {
-      return res.status(409).json({
-        error: 'beBPo-Versand erfolgt am gebündelten Fall.',
-        message: 'beBPo-Versand erfolgt am gebündelten Fall – bitte Fall-Detail öffnen.',
-      })
+    const fallHinweisVersand = meldungWirdAmFallBearbeitet(meldung)
+    if (fallHinweisVersand) {
+      return res.status(409).json({ error: fallHinweisVersand, message: fallHinweisVersand })
     }
     if (!meldung.ervRelevant) return res.status(400).json({ error: 'Meldung ist nicht ERV-relevant', message: 'Meldung ist nicht ERV-relevant' })
     const bedienstete = await prisma.bedienstete.findUnique({ where: { bediensteterID: nutzerId } })
@@ -901,6 +939,10 @@ router.post('/meldungen/:id/xjustiz-versand', async (req, res, next) => {
         status:           'VERSENDET',
         versendetVonId:   bedienstete?.id,
       },
+    })
+    await benachrichtigeNaechstenProzessschritt(prisma, {
+      ...meldung,
+      xJustizVersand: [versand],
     })
     res.json({ data: versand })
   } catch (err) { next(err) }

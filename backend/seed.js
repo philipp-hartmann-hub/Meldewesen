@@ -237,6 +237,8 @@ async function seedDemoFaelle(prisma, bdMap) {
     alEntscheidKommentar: null,
     alEntscheidAm: null,
     entscheidVonRolle: null,
+    entscheidVonId: null,
+    egpaVeraktetVonId: null,
     rueckgabeGrund: null,
     versandfaehigAm: null,
     bepoVersendetAm: null,

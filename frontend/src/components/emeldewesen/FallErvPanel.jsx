@@ -50,6 +50,9 @@ export default function FallErvPanel({ fall, aktionLaden, onAktion }) {
       done: false,
       aktiv: fall.darfAbschliessen,
       icon: '🗂️',
+      detail: fall.vierAugenGesperrt
+        ? 'Abschluss durch eine zweite Person (AL oder VAL) erforderlich'
+        : undefined,
     })
   }
 

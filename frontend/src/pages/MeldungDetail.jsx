@@ -151,6 +151,13 @@ export default function MeldungDetail({ editMode: editModeProp }) {
       <PageLayout plattformTitel="eMeldewesen" seiten={seiten}>
         <ProzessStepperBlock meldung={meldungMitVersand} />
         <h1 className="text-2xl font-bold text-jhh-primary mb-2">{meldung.meldungsNr} bearbeiten</h1>
+        {meldung.metadaten?.rueckgabeDgl && (
+          <p className="text-sm mb-4 border-l-4 border-jhh-warning pl-3">
+            Die Dienstgruppenleitung hat diese Meldung zur Nachbesserung zurückgegeben.
+            {meldung.metadaten.rueckgabeDgl.kommentar ? ` ${meldung.metadaten.rueckgabeDgl.kommentar}` : ''}
+            {' '}Nach dem erneuten Einreichen bleibt die Meldung im Fall.
+          </p>
+        )}
         <MeldungForm
           meldungstypen={typen}
           initialValues={meldung}
@@ -190,6 +197,13 @@ export default function MeldungDetail({ editMode: editModeProp }) {
           <span aria-hidden="true">⚠️</span> {h.text}
         </div>
       ))}
+
+      {meta.rueckgabeDgl && (
+        <div role="status" className="mb-4 p-4 rounded border border-jhh-warning bg-yellow-50 text-sm">
+          <p className="font-semibold text-jhh-warning mb-1">Zurückgegeben durch die Dienstgruppenleitung</p>
+          <p className="text-jhh-text m-0">{meta.rueckgabeDgl.kommentar}</p>
+        </div>
+      )}
 
       {meta.rueckgabeErgaenzung && (
         <div

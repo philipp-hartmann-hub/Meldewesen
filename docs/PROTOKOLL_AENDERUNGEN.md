@@ -9,6 +9,27 @@ Chronologisches Änderungsprotokoll zum Prototyp. Ergänzt Umsetzungsdokumente (
 
 ## Einträge (neueste zuerst)
 
+### 2026-11-19 – Schrittleiste steuert die Arbeitskörbe
+
+- **Umfang:** Nach dem Absenden arbeitet die Meldung die angezeigten Schritte der Reihe nach ab. Der jeweils offene Schritt liegt als Aufgabe im Arbeitskorb der zuständigen Rolle: Zeugenbefragung bei den Zeugen, danach fachliche Prüfung, beBPo, eGPA und Abschluss bei VAL und Anstaltsleitung. Die Schrittleiste markiert denselben offenen Schritt. Die Zentrale bündelt weiter nur Fälle, nicht den nächsten Einzelschritt.
+- **Code:** `arbeitskorbService.js`, `routes/index.js`, `meldungen.js`, `MeldungAktionen.jsx`, `ArbeitskorbPanel.jsx`, `arbeitskorb.js`, `BenachrichtigungenGlocke.jsx`
+- **Dokumentation:** dieser Eintrag
+- **Commit:** ausstehend
+
+### 2026-11-19 – Nutzerwechsel führt auf das Dashboard
+
+- **Umfang:** Wechsel des Testnutzers im Prototyp-Banner setzt die Ansicht auf `/dashboard` zurück.
+- **Code:** `PrototypBanner.jsx`
+- **Dokumentation:** dieser Eintrag
+- **Commit:** ausstehend
+
+### 2026-11-17 – Vier-Augen am Fallabschluss
+
+- **Umfang:** `MeldungsFall` erhält `entscheidVonId` und `egpaVeraktetVonId` (Relation zu `Bedienstete`). Die Meldepflicht-Entscheidung und die eGPA-Veraktung speichern die ausführende Person. Der Abschluss ist nur durch eine andere Person zulässig (409). Der Button erscheint für dieselbe Person nicht; stattdessen der Hinweis, dass AL oder VAL als zweite Person abschließen muss. Die Demo-Fälle FALL-001 und FALL-002 setzen die Felder beim Seed auf leer.
+- **Code:** `schema.prisma`, `fallService.js`, `FallErvPanel.jsx`, `seed.js`
+- **Dokumentation:** dieser Eintrag
+- **Commit:** ausstehend
+
 ### 2026-06-05 – Prüfauftrag für Mitarbeiter-Abnahme
 
 - **Umfang:** Dokument `PRUEFAUFTRAG_MITARBEITER.md` mit Aufgabenstellung, Anpassungsliste (A–H), 10 Prüfszenarien, Rollen-Matrix und E-Mail-Kurzfassung für fachliche Abnahme durch zwei Mitarbeiter.

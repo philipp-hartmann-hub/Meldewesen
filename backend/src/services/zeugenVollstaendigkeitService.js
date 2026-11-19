@@ -44,6 +44,19 @@ export function alleZeugenaussagenVollstaendig(metadaten) {
   return true
 }
 
+/**
+ * Einzelmeldung ohne Fall, die das Zentrale Meldewesen bündeln kann.
+ * Strafanzeigen erst, wenn alle Zeugenaussagen vorliegen.
+ */
+export function istBereitFuerZentraleBuendelung(meldung) {
+  if (!meldung || meldung.fallId) return false
+  if (!['SUBMITTED', 'FORWARDED'].includes(meldung.status)) return false
+  if (meldung.meldungsTyp === 'STRAFANZEIGE') {
+    return alleZeugenaussagenVollstaendig(meldung.metadaten)
+  }
+  return true
+}
+
 /** Zeitpunkt, ab dem alle Zeugenaussagen vorliegen (für Sortierung/Anzeige). */
 export function zeugenAbschlussZeitpunkt(metadaten) {
   const fa = metadaten?.zeugenFolgeaktionen || {}

@@ -332,7 +332,7 @@ export default function ArbeitskorbPanel({ embedded = false }) {
           <p className="text-jhh-text-light m-0 mb-2">Keine Aufgaben in Ihrem Arbeitskorb.</p>
           <p className="text-sm text-jhh-text-light m-0">
             {bereichFilter === ZUWEISUNG.GRUPPE
-              ? 'Gruppenaufgaben erscheinen hier bei Zeugenaussagen (Inhaftierter) oder Beweismittel-Nachreichung nach VAL-Rückgabe.'
+              ? 'Gruppenaufgaben erscheinen hier für offene Fall-Schritte, Zeugenaussagen (Inhaftierter) oder Beweismittel-Nachreichung.'
               : istVAL || istAL
                 ? 'Persönliche Aufgaben als Zeuge/Zeugin, übernommene Gruppenaufgaben oder fachliche Prüfung, sobald alle Zeugenaussagen vorliegen.'
                 : 'Persönliche Aufgaben als Zeuge/Zeugin, übernommene Gruppenaufgaben, Beweismittel-Nachreichung oder Zeugenaussagen.'}
@@ -348,7 +348,13 @@ export default function ArbeitskorbPanel({ embedded = false }) {
             const tier = berechneTier(a)
             const tierInfo = getTierInfo(tier)
             const dringendHervorheben = tier <= 2 && a.status === 'OFFEN'
-            const href = `/arbeitskorb/aufgabe/${encodeURIComponent(a.id)}`
+            const href = a.zielPfad
+              ? a.zielPfad
+              : a.fallId
+              ? `/faelle/${a.fallId}`
+              : a.typ === AUFGABEN_TYPEN.DGL_RUECKGABE
+                ? `/meldungen/${a.meldungId}/bearbeiten`
+                : `/arbeitskorb/aufgabe/${encodeURIComponent(a.id)}`
             return (
               <li key={a.id}>
                 <div
@@ -401,24 +407,31 @@ export default function ArbeitskorbPanel({ embedded = false }) {
 
                   {/* Rechte Spalte: CTA */}
                   <div className="flex-shrink-0 flex gap-2 items-center">
-                    {a.zuweisung === ZUWEISUNG.GRUPPE && (
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm whitespace-nowrap min-h-[44px] inline-flex items-center justify-center"
-                        onClick={() => navigate(href)}
+                    {a.fallId || a.zielPfad ? (
+                      <Link
+                        to={href}
+                        className="btn-primary btn-sm whitespace-nowrap min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
                       >
-                        Aufgabe öffnen
-                      </button>
-                    )}
-                    {a.zuweisung === ZUWEISUNG.GRUPPE ? (
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm whitespace-nowrap min-h-[44px] inline-flex items-center justify-center"
-                        onClick={() => handleUebernehmen(a)}
-                        disabled={uebernehmenLaden === a.id}
-                      >
-                        {uebernehmenLaden === a.id ? 'Wird übernommen …' : 'Aufgabe übernehmen'}
-                      </button>
+                        {a.aktionLabel || (a.fallId ? 'Fall öffnen' : 'Meldung öffnen')}
+                      </Link>
+                    ) : a.zuweisung === ZUWEISUNG.GRUPPE ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm whitespace-nowrap min-h-[44px] inline-flex items-center justify-center"
+                          onClick={() => navigate(href)}
+                        >
+                          Aufgabe öffnen
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm whitespace-nowrap min-h-[44px] inline-flex items-center justify-center"
+                          onClick={() => handleUebernehmen(a)}
+                          disabled={uebernehmenLaden === a.id}
+                        >
+                          {uebernehmenLaden === a.id ? 'Wird übernommen …' : 'Aufgabe übernehmen'}
+                        </button>
+                      </>
                     ) : (
                       <Link
                         to={href}

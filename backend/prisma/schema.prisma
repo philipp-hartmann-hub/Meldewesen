@@ -56,6 +56,8 @@ model Bedienstete {
   veraktungen           Veraktung[]
   xJustizVersendungen   XJustizVersand[]
   erstellteFaelle       MeldungsFall[] @relation("FallErstelltVon")
+  entschiedeneFaelle    MeldungsFall[] @relation("FallEntscheidVon")
+  egpaVerakteteFaelle   MeldungsFall[] @relation("FallEgpaVeraktetVon")
 
   @@map("bedienstete")
 }
@@ -74,10 +76,14 @@ model MeldungsFall {
   alEntscheidKommentar String?
   alEntscheidAm        DateTime?
   entscheidVonRolle    String?            // anstaltsleitung | val
+  entscheidVonId       String?
+  entscheidVon         Bedienstete?       @relation("FallEntscheidVon", fields: [entscheidVonId], references: [id])
   versandfaehigAm      DateTime?
   bepoVersendetAm      DateTime?
   bepoNachrichtenId    String?
   egpaVeraktetAm       DateTime?
+  egpaVeraktetVonId    String?
+  egpaVeraktetVon      Bedienstete?       @relation("FallEgpaVeraktetVon", fields: [egpaVeraktetVonId], references: [id])
   egpaAktenzeichen     String?
   abgeschlossenAm      DateTime?
   erstelltVonId        String?

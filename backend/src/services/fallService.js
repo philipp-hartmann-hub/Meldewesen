@@ -2,6 +2,18 @@
  * Fall-Bündelung – Zentrale → DGL → SL → AL/VAL → ERV am Fall (Prototyp).
  */
 import { getFallStatusLabel } from '../utils/fallStatusLabels.js'
+import { istBereitFuerZentraleBuendelung } from './zeugenVollstaendigkeitService.js'
+import {
+  BENACHRICHTIGUNG_TYPEN,
+  benachrichtigeNeueAufgabe,
+  erstelleBenachrichtigungen,
+} from './benachrichtigungService.js'
+import {
+  AUFGABEN_TYPEN,
+  DGL_RUECKGABE_ZEUGE_ID,
+  beschreibeOffeneFallAufgabe,
+  encodeAufgabeId,
+} from './arbeitskorbService.js'
 
 const MELDUNG_INCLUDE = {
   gefangene: true,
@@ -11,6 +23,8 @@ const MELDUNG_INCLUDE = {
 const FALL_INCLUDE = {
   meldungen: { include: MELDUNG_INCLUDE, orderBy: { erstelltAm: 'asc' } },
   erstelltVon: true,
+  entscheidVon: true,
+  egpaVeraktetVon: true,
 }
 
 function assertAk(mockNutzer) {
@@ -50,9 +64,17 @@ function jvaWhere(mockNutzer) {
   return { jva: mockNutzer.jva }
 }
 
+/** Nächste Nummer aus der höchsten vorhandenen fallNr, nicht aus der Anzahl. Eine Lücke in der Mitte wird nicht wieder vergeben. */
 async function naechsteFallNr(prisma) {
-  const count = await prisma.meldungsFall.count()
-  return `FALL-${String(count + 1).padStart(3, '0')}`
+  const faelle = await prisma.meldungsFall.findMany({ select: { fallNr: true } })
+  let hoechste = 0
+  for (const fall of faelle) {
+    const treffer = /^FALL-(\d+)$/.exec(fall.fallNr || '')
+    if (!treffer) continue
+    const nummer = Number(treffer[1])
+    if (nummer > hoechste) hoechste = nummer
+  }
+  return `FALL-${String(hoechste + 1).padStart(3, '0')}`
 }
 
 async function ladeFallOderFehler(prisma, fallId, mockNutzer) {
@@ -98,8 +120,13 @@ async function validiereMeldungenFuerBuendelung(prisma, meldungIds, mockNutzer) 
     throw err
   }
   for (const m of meldungen) {
-    if (m.status !== 'SUBMITTED') {
-      const err = new Error(`Meldung ${m.meldungsNr} ist nicht eingereicht und kann nicht gebündelt werden.`)
+    if (!istBereitFuerZentraleBuendelung(m)) {
+      const wartetAufZeugen = m.meldungsTyp === 'STRAFANZEIGE' && !m.fallId
+      const err = new Error(
+        wartetAufZeugen
+          ? `Meldung ${m.meldungsNr} wartet noch auf Zeugenaussagen und kann nicht gebündelt werden.`
+          : `Meldung ${m.meldungsNr} ist nicht zur Bündelung freigegeben.`,
+      )
       err.status = 400
       throw err
     }
@@ -122,16 +149,16 @@ async function validiereMeldungenFuerBuendelung(prisma, meldungIds, mockNutzer) 
 export async function listUngebundeneMeldungen(prisma, mockNutzer) {
   assertAk(mockNutzer)
   const where = {
-    status: 'SUBMITTED',
+    status: { in: ['SUBMITTED', 'FORWARDED'] },
     fallId: null,
     gefangene: mockNutzer.siehtAlleJVAs ? undefined : { jva: mockNutzer.jva },
   }
-  const data = await prisma.meldung.findMany({
+  const rows = await prisma.meldung.findMany({
     where,
     include: MELDUNG_INCLUDE,
     orderBy: { erstelltAm: 'desc' },
   })
-  return { data }
+  return { data: rows.filter(istBereitFuerZentraleBuendelung) }
 }
 
 /** Vorschläge: gleiche Tatzeit + Tatort → wahrscheinlich gleicher Vorfall (Assistenz, keine Auto-Bündelung). */
@@ -229,10 +256,16 @@ function formatFallResponse(fall, mockNutzer) {
     && fall.status === 'ERV_WEG'
     && fall.bepoVersendetAm
     && !fall.egpaVeraktetAm
-  const darfAbschliessen = (mockNutzer.istAL || mockNutzer.istVAL)
+  const eigeneBeteiligung = Boolean(mockNutzer.nutzerId) && (
+    fall.entscheidVon?.bediensteterID === mockNutzer.nutzerId
+    || fall.egpaVeraktetVon?.bediensteterID === mockNutzer.nutzerId
+  )
+  const abschlussReif = (mockNutzer.istAL || mockNutzer.istVAL)
     && ['EGPA_INTERN', 'ERV_WEG'].includes(fall.status)
-    && fall.egpaVeraktetAm
+    && Boolean(fall.egpaVeraktetAm)
     && !fall.abgeschlossenAm
+  const darfAbschliessen = abschlussReif && !eigeneBeteiligung
+  const vierAugenGesperrt = abschlussReif && eigeneBeteiligung
 
   const istAbgeschlossen = fall.status === 'ABGESCHLOSSEN_INTERN'
 
@@ -249,6 +282,7 @@ function formatFallResponse(fall, mockNutzer) {
     darfEgpaIntern,
     darfEgpaErv,
     darfAbschliessen,
+    vierAugenGesperrt,
     istAbgeschlossen,
     hatVersandfaehig: Boolean(fall.versandfaehigAm),
     hatBepo: Boolean(fall.bepoVersendetAm),
@@ -296,8 +330,25 @@ async function schreibeMeldungenStatus(
   status,
   kommentar,
   bediensteteId,
+  { nurVerlauf = false } = {},
 ) {
   if (!meldungIds?.length) return
+  if (nurVerlauf) {
+    const meldungen = await prisma.meldung.findMany({
+      where: { id: { in: meldungIds } },
+      select: { id: true, status: true },
+    })
+    if (!meldungen.length) return
+    await prisma.statusVerlauf.createMany({
+      data: meldungen.map(m => ({
+        meldungId: m.id,
+        status: m.status,
+        kommentar: kommentar || null,
+        bediensteteId: bediensteteId || null,
+      })),
+    })
+    return
+  }
   await prisma.meldung.updateMany({
     where: { id: { in: meldungIds } },
     data: { status },
@@ -310,6 +361,25 @@ async function schreibeMeldungenStatus(
       bediensteteId: bediensteteId || null,
     })),
   })
+}
+
+async function benachrichtigeFallSchritt(prisma, fall) {
+  const aufgabe = beschreibeOffeneFallAufgabe(fall)
+  if (!aufgabe) return
+  const leute = await prisma.bedienstete.findMany({
+    where: {
+      bediensteterJVA: fall.jva,
+      bediensteterRolle: { in: aufgabe.rollen },
+    },
+    select: { bediensteterID: true },
+  })
+  if (!leute.length) return
+  await erstelleBenachrichtigungen(prisma, leute.map(b => ({
+    empfaengerId: b.bediensteterID,
+    typ: BENACHRICHTIGUNG_TYPEN.AUFGABE_NEU,
+    text: `Neue Aufgabe: ${aufgabe.titel}`,
+    aufgabeId: encodeAufgabeId(fall.id, aufgabe.typ, 'fall'),
+  })))
 }
 
 async function ladeBedienstete(prisma, mockNutzer) {
@@ -381,10 +451,28 @@ export async function removeMeldungFromFall(prisma, mockNutzer, fallId, meldungI
     err.status = 404
     throw err
   }
-  await prisma.meldung.update({
-    where: { id: meldungId },
-    data: { fallId: null },
-  })
+  const bedienstete = await ladeBedienstete(prisma, mockNutzer)
+  if (meldung.status === 'FORWARDED') {
+    await prisma.$transaction([
+      prisma.meldung.update({
+        where: { id: meldungId },
+        data: { fallId: null, status: 'SUBMITTED' },
+      }),
+      prisma.statusVerlauf.create({
+        data: {
+          meldungId,
+          status: 'SUBMITTED',
+          kommentar: 'Aus dem Fall entfernt – wieder zur Bündelung freigegeben.',
+          bediensteteId: bedienstete?.id || null,
+        },
+      }),
+    ])
+  } else {
+    await prisma.meldung.update({
+      where: { id: meldungId },
+      data: { fallId: null },
+    })
+  }
   const verbleibend = fall.meldungen.filter(m => m.id !== meldungId)
   if (verbleibend.length === 0) {
     await prisma.meldungsFall.delete({ where: { id: fallId } })
@@ -408,6 +496,14 @@ export async function weiterleitenAnDgl(prisma, mockNutzer, fallId) {
   }
   pruefeGleicherMeldungstyp(fall.meldungen)
 
+  const offeneNachbesserung = fall.meldungen.filter(m => m.status === 'DRAFT')
+  if (offeneNachbesserung.length) {
+    const nummern = offeneNachbesserung.map(m => m.meldungsNr).join(', ')
+    const err = new Error(`Diese Meldungen sind noch in Überarbeitung bei der aVD: ${nummern}.`)
+    err.status = 409
+    throw err
+  }
+
   const bedienstete = await ladeBedienstete(prisma, mockNutzer)
 
   await prisma.meldungsFall.update({
@@ -425,10 +521,11 @@ export async function weiterleitenAnDgl(prisma, mockNutzer, fallId) {
   )
 
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
-export async function rueckgabeAnAk(prisma, mockNutzer, fallId, { kommentar }) {
+export async function rueckgabeAnAk(prisma, mockNutzer, fallId, { kommentar, meldungIds } = {}) {
   assertDgl(mockNutzer)
   const fall = await ladeFallOderFehler(prisma, fallId, mockNutzer)
   if (fall.status !== 'ZUR_DGL') {
@@ -441,11 +538,75 @@ export async function rueckgabeAnAk(prisma, mockNutzer, fallId, { kommentar }) {
     err.status = 400
     throw err
   }
+  let ausgewaehlt = fall.meldungen
+  if (Array.isArray(meldungIds)) {
+    if (!meldungIds.length) {
+      const err = new Error('Bitte wählen Sie mindestens eine Meldung für die Nachbesserung.')
+      err.status = 400
+      throw err
+    }
+    ausgewaehlt = fall.meldungen.filter(m => meldungIds.includes(m.id))
+    if (ausgewaehlt.length !== meldungIds.length) {
+      const err = new Error('Eine der ausgewählten Meldungen gehört nicht zu diesem Fall.')
+      err.status = 400
+      throw err
+    }
+  }
+  if (!ausgewaehlt.length) {
+    const err = new Error('Diesem Fall sind keine Meldungen zugeordnet.')
+    err.status = 400
+    throw err
+  }
+
+  const grund = kommentar.trim()
+  const jetzt = new Date().toISOString()
+  const bedienstete = await ladeBedienstete(prisma, mockNutzer)
   await prisma.meldungsFall.update({
     where: { id: fallId },
-    data: { status: 'ZURUECK_AK', rueckgabeGrund: kommentar.trim() },
+    data: { status: 'ZURUECK_AK', rueckgabeGrund: grund },
   })
+
+  await schreibeMeldungenStatus(
+    prisma,
+    fall.meldungen.map(m => m.id),
+    null,
+    `DGL: Qualität nicht ausreichend, an aVD und Zentrale zurückgegeben. ${grund}`,
+    bedienstete?.id,
+    { nurVerlauf: true },
+  )
+
+  for (const meldung of ausgewaehlt) {
+    const meta = meldung.metadaten && typeof meldung.metadaten === 'object' ? { ...meldung.metadaten } : {}
+    meta.rueckgabeDgl = {
+      kommentar: grund,
+      zurueckgegebenAm: jetzt,
+      zurueckgegebenVon: mockNutzer.nutzerId,
+    }
+    await prisma.meldung.update({
+      where: { id: meldung.id },
+      data: { status: 'DRAFT', metadaten: meta },
+    })
+    await prisma.statusVerlauf.create({
+      data: {
+        meldungId: meldung.id,
+        status: 'DRAFT',
+        kommentar: `Dienstgruppenleitung: zur Nachbesserung an aVD zurückgegeben. ${grund}`,
+        bediensteteId: bedienstete?.id || null,
+      },
+    })
+    const empfaengerId = meldung.zustaendig?.bediensteterID
+    if (empfaengerId) {
+      await benachrichtigeNeueAufgabe(prisma, {
+        empfaengerId,
+        meldung,
+        aufgabeId: encodeAufgabeId(meldung.id, AUFGABEN_TYPEN.DGL_RUECKGABE, DGL_RUECKGABE_ZEUGE_ID),
+        titel: 'Meldung nach DGL-Rückgabe überarbeiten',
+      })
+    }
+  }
+
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
@@ -458,11 +619,21 @@ export async function weiterleitenAnSl(prisma, mockNutzer, fallId) {
     err.status = 400
     throw err
   }
+  const bedienstete = await ladeBedienstete(prisma, mockNutzer)
   await prisma.meldungsFall.update({
     where: { id: fallId },
     data: { status: 'ZUR_SL', rueckgabeGrund: null },
   })
+  await schreibeMeldungenStatus(
+    prisma,
+    fall.meldungen.map(m => m.id),
+    null,
+    'DGL: Qualität ausreichend, an Stationsleitung',
+    bedienstete?.id,
+    { nurVerlauf: true },
+  )
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
@@ -475,11 +646,21 @@ export async function weiterleitenAnAl(prisma, mockNutzer, fallId) {
     err.status = 400
     throw err
   }
+  const bedienstete = await ladeBedienstete(prisma, mockNutzer)
   await prisma.meldungsFall.update({
     where: { id: fallId },
     data: { status: 'ZUR_AL', rueckgabeGrund: null },
   })
+  await schreibeMeldungenStatus(
+    prisma,
+    fall.meldungen.map(m => m.id),
+    null,
+    'Stationsleitung: Fallmeldung an Anstaltsleitung und VAL weitergeleitet',
+    bedienstete?.id,
+    { nurVerlauf: true },
+  )
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
@@ -511,6 +692,7 @@ export async function entscheidMeldepflicht(prisma, mockNutzer, fallId, { meldep
       alEntscheidKommentar: kommentar?.trim() || null,
       alEntscheidAm: new Date(),
       entscheidVonRolle: mockNutzer.rolle,
+      entscheidVonId: bedienstete?.id ?? null,
       rueckgabeGrund: null,
     },
   })
@@ -540,6 +722,7 @@ export async function entscheidMeldepflicht(prisma, mockNutzer, fallId, { meldep
   }
 
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
@@ -558,6 +741,7 @@ export async function markVersandfaehig(prisma, mockNutzer, fallId) {
     data: { versandfaehigAm: new Date() },
   })
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return formatFallResponse(updated, mockNutzer)
 }
 
@@ -578,6 +762,7 @@ export async function fallBepoVersand(prisma, mockNutzer, fallId) {
     },
   })
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return { ...formatFallResponse(updated, mockNutzer), bepoNachrichtenId: bepoId }
 }
 
@@ -608,15 +793,18 @@ export async function fallEgpaVerakten(prisma, mockNutzer, fallId) {
     throw err
   }
 
+  const bedienstete = await ladeBedienstete(prisma, mockNutzer)
   const aktenzeichen = `EGPA-${fall.fallNr}-${Date.now()}`
   await prisma.meldungsFall.update({
     where: { id: fallId },
     data: {
       egpaVeraktetAm: new Date(),
+      egpaVeraktetVonId: bedienstete?.id ?? null,
       egpaAktenzeichen: aktenzeichen,
     },
   })
   const updated = await ladeFallNachAktion(prisma, fallId)
+  await benachrichtigeFallSchritt(prisma, updated)
   return { ...formatFallResponse(updated, mockNutzer), egpaAktenzeichen: aktenzeichen }
 }
 
@@ -630,6 +818,14 @@ export async function fallAbschliessen(prisma, mockNutzer, fallId, { kommentar }
   }
 
   const bedienstete = await ladeBedienstete(prisma, mockNutzer)
+  if (
+    bedienstete?.id
+    && (bedienstete.id === fall.entscheidVonId || bedienstete.id === fall.egpaVeraktetVonId)
+  ) {
+    const err = new Error('Vier-Augen-Prinzip: Der Abschluss muss durch eine zweite Person erfolgen.')
+    err.status = 409
+    throw err
+  }
   const meldungIds = fall.meldungen.map(m => m.id)
   const rolleLabel = mockNutzer.istAL ? 'Anstaltsleitung' : 'VAL'
 

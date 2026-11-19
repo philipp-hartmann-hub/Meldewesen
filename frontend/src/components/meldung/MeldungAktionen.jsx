@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useRolle } from '../../context/RollenContext'
 import MeldungZieloptionenModal from './MeldungZieloptionenModal'
 import RueckgabeDialog from './RueckgabeDialog'
 import RichTextEditor from '../shared/RichTextEditor'
 import { isRichTextEmpty } from '../../utils/richText'
 import { istStrafanzeigePruefbereit } from '../../utils/zeugenVollstaendigkeit'
-import { istFallErvPfad } from '../../utils/faelle'
+import { getFallStatusLabel } from '../../utils/faelle'
 
 function resolvePrimaerAktion({
   meldung,
@@ -20,12 +20,14 @@ function resolvePrimaerAktion({
   darfVerakten,
   darfMeldungAbschliessen,
   darfFachlichPruefen,
-  ervAmFall,
 }) {
   if (kannMeldungBearbeiten && meldung.status === 'DRAFT') {
     return { key: 'einreichen', label: '📤 Einreichen', status: 'SUBMITTED' }
   }
 
+  if (meldung.fallId) return null
+
+  // TODO Soll: Einzelpfad ohne Fall fachlich klären (PROZESS_SOLL_UND_STAND Kap. 9)
   const kannPruefen = darfFachlichPruefen
     && kannMeldungBearbeiten
     && ['SUBMITTED', 'FORWARDED'].includes(meldung.status)
@@ -35,30 +37,31 @@ function resolvePrimaerAktion({
     return { key: 'pruefung', label: '🔍 Fachliche Prüfung aufnehmen', status: 'IN_PROGRESS' }
   }
 
-  if (!ervAmFall) {
-    if (
-      meldung.status === 'IN_PROGRESS'
-      && (istVAL || istAL)
-      && meldung.ervRelevant
-      && darfXJustizSenden
-      && !hatBepo
-    ) {
-      return { key: 'bepo', label: '⚖️ Per beBPo versenden', action: 'bepo' }
-    }
+  if (
+    meldung.status === 'IN_PROGRESS'
+    && (istVAL || istAL)
+    && meldung.ervRelevant
+    && darfXJustizSenden
+    && !hatBepo
+  ) {
+    return { key: 'bepo', label: '⚖️ Per beBPo versenden', action: 'bepo' }
+  }
 
-    if (meldung.ervRelevant && hatBepo && !hatEgpa && darfVerakten) {
-      return { key: 'egpa', label: '📁 In eGPA verakten', action: 'verakten' }
-    }
+  if (meldung.ervRelevant && hatBepo && !hatEgpa && darfVerakten) {
+    return { key: 'egpa', label: '📁 In eGPA verakten', action: 'verakten' }
+  }
 
-    if (
-      hatBepo
-      && hatEgpa
-      && darfMeldungAbschliessen
-      && meldung.status !== 'DRAFT'
-      && meldung.status !== 'ARCHIVED'
-    ) {
-      return { key: 'archiv', label: '🗂️ Meldung abschließen', action: 'archiv' }
-    }
+  const schritteVorAbschlussErledigt = meldung.ervRelevant
+    ? hatBepo && hatEgpa
+    : meldung.status === 'IN_PROGRESS'
+
+  if (
+    schritteVorAbschlussErledigt
+    && darfMeldungAbschliessen
+    && meldung.status !== 'DRAFT'
+    && meldung.status !== 'ARCHIVED'
+  ) {
+    return { key: 'archiv', label: '🗂️ Meldung abschließen', action: 'archiv' }
   }
 
   return null
@@ -86,7 +89,7 @@ export default function MeldungAktionen({ meldung, onAktualisiert }) {
   const [rueckgabeGrund, setRueckgabeGrund] = useState('zeugen')
 
   const istArchiviert = meldung.status === 'ARCHIVED'
-  const ervAmFall = istFallErvPfad(meldung.fall)
+  const imFall = Boolean(meldung.fallId)
   const hatBepo = meldung.xJustizVersand?.some(v => v.status === 'VERSENDET' || v.status === 'BESTAETIGT')
   const hatEgpa = meldung.veraktungen?.some(v => v.status === 'UEBERMITTELT')
   const pruefbereit = istStrafanzeigePruefbereit(meldung)
@@ -103,7 +106,6 @@ export default function MeldungAktionen({ meldung, onAktualisiert }) {
     darfVerakten,
     darfMeldungAbschliessen,
     darfFachlichPruefen: istVAL || istAL,
-    ervAmFall,
   })
 
   async function statusAendern(status) {
@@ -210,16 +212,16 @@ export default function MeldungAktionen({ meldung, onAktualisiert }) {
     }
   }
 
-  const zeigtWeiterleiten = darfWeiterleiten && !['DRAFT', 'ARCHIVED'].includes(meldung.status)
-  const zeigtErvSekundaer = meldung.ervRelevant && !istArchiviert && !ervAmFall
-  const zeigtRueckgabe = (istVAL || istAL)
+  const zeigtWeiterleiten = !imFall && darfWeiterleiten && !['DRAFT', 'ARCHIVED'].includes(meldung.status)
+  const zeigtErvSekundaer = !imFall && meldung.ervRelevant && !istArchiviert
+  const zeigtRueckgabe = !imFall && (istVAL || istAL)
     && ['SUBMITTED', 'IN_PROGRESS', 'FORWARDED'].includes(meldung.status)
 
   function oeffneRueckgabe(grund = 'zeugen') {
     setRueckgabeGrund(grund)
     setRueckgabeOffen(true)
   }
-  const zeigtPruefHinweis = (istVAL || istAL)
+  const zeigtPruefHinweis = !imFall && (istVAL || istAL)
     && kannMeldungBearbeiten
     && meldung.meldungsTyp === 'STRAFANZEIGE'
     && ['SUBMITTED', 'FORWARDED'].includes(meldung.status)
@@ -261,27 +263,33 @@ export default function MeldungAktionen({ meldung, onAktualisiert }) {
         </p>
       )}
 
-      {ervAmFall && (
+      {imFall && (
         <p className="text-sm text-jhh-secondary mb-4" role="status">
-          ERV und eGPA erfolgen am <strong>gebündelten Fall</strong> – bitte Fall-Detail öffnen.
+          Teil von Fall{' '}
+          <Link to={`/faelle/${meldung.fall?.id}`} className="font-semibold hover:underline">
+            {meldung.fall?.fallNr}
+          </Link>
+          , Bearbeitung am Fall (aktueller Schritt: {getFallStatusLabel(meldung.fall?.status)}).
         </p>
       )}
 
-      {meldung.ervRelevant && !ervAmFall && darfMeldungAbschliessen && (!hatBepo || !hatEgpa) && (
+      {meldung.ervRelevant && !imFall && darfMeldungAbschliessen && (!hatBepo || !hatEgpa) && (
         <p className="text-xs text-jhh-text-light mb-4">
           ERV-Ablauf: zuerst beBPo, dann eGPA, danach Abschluss mit Vier-Augen (VAL ↔ AL).
         </p>
       )}
 
-      <RichTextEditor
-        id="aktion-kommentar"
-        label="Kommentar (optional)"
-        value={kommentar}
-        onChange={setKommentar}
-        minHeight="44px"
-        placeholder="z. B. Übergabe an VAL"
-        className="w-full"
-      />
+      {(!imFall || primaer) && (
+        <RichTextEditor
+          id="aktion-kommentar"
+          label="Kommentar (optional)"
+          value={kommentar}
+          onChange={setKommentar}
+          minHeight="44px"
+          placeholder="z. B. Übergabe an VAL"
+          className="w-full"
+        />
+      )}
 
       <div className="mt-8 pt-4 border-t border-jhh-border flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -357,13 +365,13 @@ export default function MeldungAktionen({ meldung, onAktualisiert }) {
             >
               {primaer.label}
             </button>
-          ) : (
+          ) : !imFall ? (
             <p className="text-sm text-jhh-text-light m-0">
               {istAVD || istStationsleitung
                 ? 'Fachliche Prüfung obliegt der VAL. Offene Aufgaben finden Sie im Arbeitskorb.'
                 : 'Keine Primäraktion für Ihre Rolle.'}
             </p>
-          )}
+          ) : null}
         </div>
       </div>
 

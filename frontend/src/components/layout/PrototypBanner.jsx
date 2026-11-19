@@ -2,6 +2,7 @@
 // PrototypBanner.jsx – HEUREKA 2.0 | A2 eMeldewesen
 // ============================================================
 
+import { useNavigate } from 'react-router-dom'
 import { useRolle, DEMO_NUTZER, getRolleLabel, getRolleAbkuerzung } from '../../context/RollenContext'
 
 const ROLLEN_REIHENFOLGE = [
@@ -26,6 +27,14 @@ function formatNutzerOptionLabel(n, compact = false) {
 
 export default function PrototypBanner() {
   const { aktiverNutzer, setAktiverNutzerId } = useRolle()
+  const navigate = useNavigate()
+
+  function handleNutzerWechsel(event) {
+    const naechsteId = event.target.value
+    if (naechsteId === aktiverNutzer.id) return
+    setAktiverNutzerId(naechsteId)
+    navigate('/dashboard')
+  }
 
   const gruppen = {}
   for (const { code, gruppe } of ROLLEN_REIHENFOLGE) {
@@ -49,7 +58,7 @@ export default function PrototypBanner() {
         <select
           id="prototyp-nutzer-select"
           value={aktiverNutzer.id}
-          onChange={e => setAktiverNutzerId(e.target.value)}
+          onChange={handleNutzerWechsel}
           className="prototype-banner__select"
           aria-label="Testnutzer auswählen"
         >

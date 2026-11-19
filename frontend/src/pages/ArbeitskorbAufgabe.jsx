@@ -394,6 +394,14 @@ export default function ArbeitskorbAufgabe() {
       .then(res => {
         if (cancelled) return
         const a = res.data
+        if (a.zielPfad) {
+          navigate(a.zielPfad, { replace: true })
+          return
+        }
+        if (a.fallId) {
+          navigate(`/faelle/${a.fallId}`, { replace: true })
+          return
+        }
         setAufgabe(a)
         setAussage(a.zeuge?.aussage || '')
         markiereAufgabeGelesen(aktiverNutzer.id, a.id)
@@ -406,7 +414,7 @@ export default function ArbeitskorbAufgabe() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [aufgabeId, aktiverNutzer.id, ladeMeldung])
+  }, [aufgabeId, aktiverNutzer.id, ladeMeldung, navigate])
 
   useEffect(() => {
     if (!meldung?.metadaten) return

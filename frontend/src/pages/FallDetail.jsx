@@ -29,6 +29,7 @@ export default function FallDetail() {
   const [fehler, setFehler] = useState('')
   const [meldung, setMeldung] = useState('')
   const [rueckgabeText, setRueckgabeText] = useState('')
+  const [rueckgabeAuswahl, setRueckgabeAuswahl] = useState(new Set())
   const [aktionLaden, setAktionLaden] = useState(false)
   const [hinzufuegenAuswahl, setHinzufuegenAuswahl] = useState(new Set())
   const [entscheidKommentar, setEntscheidKommentar] = useState('')
@@ -82,10 +83,14 @@ export default function FallDetail() {
   async function handleRueckgabe(e) {
     e.preventDefault()
     await runAktion(
-      () => api.post(`/api/faelle/${id}/rueckgabe`, { kommentar: rueckgabeText }),
-      'Zurückgegeben.',
+      () => api.post(`/api/faelle/${id}/rueckgabe`, {
+        kommentar: rueckgabeText,
+        meldungIds: [...rueckgabeAuswahl],
+      }),
+      'An aVD und Zentrale zurückgegeben.',
     )
     setRueckgabeText('')
+    setRueckgabeAuswahl(new Set())
   }
 
   async function handleWeiterleitenSl() {
@@ -266,7 +271,12 @@ export default function FallDetail() {
                   <td>{m.zustaendig?.bediensteterName || '–'}</td>
                   <td>{formatGefangene(m.gefangene)}</td>
                   <td className="max-w-xs truncate">{stripRichTextPlain(m.sachverhalt) || '–'}</td>
-                  <td><StatusBadge status={m.status} /></td>
+                  <td>
+                    <StatusBadge status={m.status} />
+                    {m.status === 'DRAFT' && m.metadaten?.rueckgabeDgl && (
+                      <p className="text-xs text-jhh-warning m-0 mt-1">Überarbeitung bei der aVD</p>
+                    )}
+                  </td>
                   {fall.darfBearbeiten && (
                     <td>
                       <button
@@ -324,14 +334,23 @@ export default function FallDetail() {
 
       <footer className="flex flex-wrap gap-3">
         {fall.darfBearbeiten && darfBuendeln && (
-          <button
-            type="button"
-            onClick={handleWeiterleitenDgl}
-            disabled={aktionLaden || !fall.meldungen?.length}
-            className="btn-primary min-h-[44px]"
-          >
-            📤 Gebündelt an Dienstgruppenleitung
-          </button>
+          <>
+            {(fall.meldungen || []).some(m => m.status === 'DRAFT') && (
+              <p className="text-sm text-jhh-warning m-0 w-full" role="status">
+                Noch in Überarbeitung bei der aVD:{' '}
+                {(fall.meldungen || []).filter(m => m.status === 'DRAFT').map(m => m.meldungsNr).join(', ')}.
+                Der Fall kann erst wieder an die Dienstgruppenleitung, wenn diese Meldungen erneut eingereicht sind.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleWeiterleitenDgl}
+              disabled={aktionLaden || !fall.meldungen?.length || (fall.meldungen || []).some(m => m.status === 'DRAFT')}
+              className="btn-primary min-h-[44px]"
+            >
+              📤 Gebündelt an Dienstgruppenleitung
+            </button>
+          </>
         )}
 
         {fall.darfPruefen && darfFallPruefen && (
@@ -344,25 +363,53 @@ export default function FallDetail() {
             >
               ✅ Qualität ok – an Stationsleitung
             </button>
-            <form onSubmit={handleRueckgabe} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:items-end">
-              <div>
-                <label htmlFor="rueckgabe-kommentar" className="block text-sm font-semibold mb-1">
-                  Rückgabegrund <span className="text-jhh-danger">*</span>
-                </label>
-                <input
-                  id="rueckgabe-kommentar"
-                  type="text"
-                  value={rueckgabeText}
-                  onChange={e => setRueckgabeText(e.target.value)}
-                  required
-                  aria-required="true"
-                  placeholder="Was fehlt zur Qualitätsprüfung?"
-                  className="input-field w-full sm:min-w-[280px]"
-                />
+            <form onSubmit={handleRueckgabe} className="w-full space-y-3 border border-jhh-border rounded p-3">
+              <p className="text-sm font-semibold m-0">Nachbesserung an aVD und Zentrale</p>
+              <ul className="space-y-1 list-none p-0 m-0">
+                {(fall.meldungen || []).map(m => (
+                  <li key={m.id}>
+                    <label className="flex items-center gap-2 text-sm min-h-[44px] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={rueckgabeAuswahl.has(m.id)}
+                        onChange={() => {
+                          setRueckgabeAuswahl(prev => {
+                            const next = new Set(prev)
+                            if (next.has(m.id)) next.delete(m.id)
+                            else next.add(m.id)
+                            return next
+                          })
+                        }}
+                      />
+                      {m.meldungsNr} · {m.zustaendig?.bediensteterName || 'aVD'}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="flex-1">
+                  <label htmlFor="rueckgabe-kommentar" className="block text-sm font-semibold mb-1">
+                    Rückgabegrund <span className="text-jhh-danger">*</span>
+                  </label>
+                  <input
+                    id="rueckgabe-kommentar"
+                    type="text"
+                    value={rueckgabeText}
+                    onChange={e => setRueckgabeText(e.target.value)}
+                    required
+                    aria-required="true"
+                    placeholder="Was fehlt zur Qualitätsprüfung?"
+                    className="input-field w-full"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={aktionLaden || !rueckgabeText.trim() || rueckgabeAuswahl.size === 0}
+                  className="btn-secondary min-h-[44px]"
+                >
+                  An aVD und Zentrale zurückgeben
+                </button>
               </div>
-              <button type="submit" disabled={aktionLaden || !rueckgabeText.trim()} className="btn-secondary min-h-[44px]">
-                ↩️ An Zentrale zurückgeben
-              </button>
             </form>
           </>
         )}

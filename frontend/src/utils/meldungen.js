@@ -319,24 +319,20 @@ export function getProzessSchritte(meldung) {
   const idx = id => schritte.findIndex(s => s.id === id)
 
   let aktiv = idx('draft')
-  if (meldung.status === 'DRAFT') {
-    aktiv = idx('draft')
-  } else if (meldung.status === 'SUBMITTED') {
-    if (mitZeugen && !zeugenVollstaendig) {
-      aktiv = idx('zeugen')
-    } else if (mitZeugen && zeugenVollstaendig) {
-      aktiv = idx('bearbeitung')
-    } else {
-      aktiv = idx('submitted')
-    }
-  } else if (['IN_PROGRESS', 'FORWARDED'].includes(meldung.status)) {
-    aktiv = idx('bearbeitung')
-    if (erv) {
-      if (hatEgpa) aktiv = idx('egpa')
-      else if (hatBepo) aktiv = idx('bepo')
-    }
-  } else if (meldung.status === 'ARCHIVED') {
+  if (meldung.status === 'ARCHIVED') {
     aktiv = schritte.length - 1
+  } else if (meldung.status === 'DRAFT') {
+    aktiv = idx('draft')
+  } else if (mitZeugen && !zeugenVollstaendig) {
+    aktiv = idx('zeugen')
+  } else if (meldung.status !== 'IN_PROGRESS' && !hatBepo && !hatEgpa) {
+    aktiv = idx('bearbeitung')
+  } else if (erv && !hatBepo) {
+    aktiv = idx('bepo')
+  } else if (erv && !hatEgpa) {
+    aktiv = idx('egpa')
+  } else {
+    aktiv = idx('archiv')
   }
 
   return schritte.map((s, i) => ({
