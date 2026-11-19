@@ -32,6 +32,7 @@ export const AUFGABEN_TYPEN = {
   FALL_ENTSCHEID: 'fall_entscheid',
   FALL_ERV: 'fall_erv',
   FALL_RUECKGABE: 'fall_rueckgabe',
+  MELDUNG_BUENDELN: 'meldung_buendeln',
   MELDUNG_BEPO: 'meldung_bepo',
   MELDUNG_EGPA: 'meldung_egpa',
   MELDUNG_ABSCHLUSS: 'meldung_abschluss',
@@ -57,6 +58,7 @@ const TYP_LABELS = {
   [AUFGABEN_TYPEN.FALL_ENTSCHEID]: 'Meldepflicht entscheiden',
   [AUFGABEN_TYPEN.FALL_ERV]: 'ERV am Fall',
   [AUFGABEN_TYPEN.FALL_RUECKGABE]: 'Fall nach Rückgabe bearbeiten',
+  [AUFGABEN_TYPEN.MELDUNG_BUENDELN]: 'Einem Fall zuordnen',
   [AUFGABEN_TYPEN.MELDUNG_BEPO]: 'Versand (beBPo)',
   [AUFGABEN_TYPEN.MELDUNG_EGPA]: 'eGPA-Veraktung',
   [AUFGABEN_TYPEN.MELDUNG_ABSCHLUSS]: 'Abschluss',
@@ -382,61 +384,31 @@ function sammleGruppenAufgabenAusMeldung(meldung, nutzer) {
   return aufgaben
 }
 
-function versandErledigt(meldung) {
-  return (meldung.xJustizVersand || []).some(v => ['VERSENDET', 'BESTAETIGT'].includes(v.status))
-}
-
-function egpaErledigt(meldung) {
-  return (meldung.veraktungen || []).some(v => v.status === 'UEBERMITTELT')
-}
-
-/** Nächster noch offener Schritt, wie in der Schrittleiste der Meldung. */
+/**
+ * Nächster Schritt einer Einzelmeldung ohne Fall.
+ * Prüfung, beBPo, eGPA und Abschluss gibt es nur noch am Fall.
+ * Weitergeleitete Meldungen ohne Fall warten wie eingereichte auf die Zentrale.
+ */
 export function naechsterProzessschritt(meldung) {
   if (!meldung || meldung.fallId || meldung.status === 'ARCHIVED' || meldung.status === 'DRAFT') return null
   const hatZeugen = meldung.meldungsTyp === 'STRAFANZEIGE'
     && Array.isArray(meldung.metadaten?.zeugen)
     && meldung.metadaten.zeugen.length > 0
   if (hatZeugen && !alleZeugenaussagenVollstaendig(meldung.metadaten)) return 'zeugen'
-  const bepo = versandErledigt(meldung)
-  const egpa = egpaErledigt(meldung)
-  const pruefungAufgenommen = meldung.status === 'IN_PROGRESS' || bepo || egpa
-  if (!pruefungAufgenommen) return 'bearbeitung'
-  if (meldung.ervRelevant && !bepo) return 'bepo'
-  if (meldung.ervRelevant && !egpa) return 'egpa'
-  return 'archiv'
+  if (meldung.status === 'SUBMITTED' || meldung.status === 'FORWARDED') return 'buendeln'
+  return null
 }
 
 const PROZESS_AUFGABEN = {
-  bearbeitung: {
-    rollen: ['val', 'anstaltsleitung'],
-    typ: AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG,
-    zeugeId: PRUEF_ZEUGE_ID,
-    titel: m => `Fachliche Prüfung ${m.meldungsNr}`,
-    nachricht: 'Alle vorherigen Schritte sind erledigt. Bitte nehmen Sie die fachliche Prüfung auf.',
-  },
-  bepo: {
-    rollen: ['val', 'anstaltsleitung'],
-    typ: AUFGABEN_TYPEN.MELDUNG_BEPO,
-    zeugeId: 'bepo',
-    titel: m => `${m.meldungsNr} per beBPo versenden`,
-    nachricht: 'Fachliche Prüfung ist erfolgt. Nächster Schritt: Versand per beBPo.',
-    zielPfad: m => `/meldungen/${m.id}`,
-  },
-  egpa: {
-    rollen: ['val', 'anstaltsleitung'],
-    typ: AUFGABEN_TYPEN.MELDUNG_EGPA,
-    zeugeId: 'egpa',
-    titel: m => `${m.meldungsNr} in eGPA verakten`,
-    nachricht: 'beBPo-Versand ist erfolgt. Nächster Schritt: eGPA-Veraktung.',
-    zielPfad: m => `/meldungen/${m.id}`,
-  },
-  archiv: {
-    rollen: ['val', 'anstaltsleitung'],
-    typ: AUFGABEN_TYPEN.MELDUNG_ABSCHLUSS,
-    zeugeId: 'abschluss',
-    titel: m => `${m.meldungsNr} abschließen`,
-    nachricht: 'Nächster Schritt: Meldung abschließen.',
-    zielPfad: m => `/meldungen/${m.id}`,
+  buendeln: {
+    rollen: ['arbeitskoordination'],
+    typ: AUFGABEN_TYPEN.MELDUNG_BUENDELN,
+    zeugeId: 'ak',
+    zuweisung: ZUWEISUNG.GRUPPE,
+    titel: m => `${m.meldungsNr} einem Fall zuordnen`,
+    nachricht: 'Diese Einzelmeldung wartet auf Zuordnung zu einem Fall durch das Zentrale Meldewesen.',
+    zielPfad: () => '/emeldewesen?bereich=faelle',
+    aktionLabel: 'Zur Bündelung',
   },
 }
 
@@ -454,9 +426,11 @@ function sammlePruefAufgabeAusMeldung(meldung, mockNutzer) {
       nachricht: beschreibung.nachricht,
     },
     {
-      zuweisung: ZUWEISUNG.PERSOENLICH,
+      zuweisung: beschreibung.zuweisung || ZUWEISUNG.PERSOENLICH,
       titel: beschreibung.titel(meldung),
-      ...(beschreibung.zielPfad ? { zielPfad: beschreibung.zielPfad(meldung), aktionLabel: 'Meldung öffnen' } : {}),
+      ...(beschreibung.zielPfad
+        ? { zielPfad: beschreibung.zielPfad(meldung), aktionLabel: beschreibung.aktionLabel || 'Meldung öffnen' }
+        : {}),
     },
   )
 }
@@ -1088,6 +1062,12 @@ export async function abschliessenArbeitskorbAufgabe(prisma, mockNutzer, aufgabe
   if (!meldung) {
     const err = new Error('Meldung nicht gefunden.')
     err.status = 404
+    throw err
+  }
+
+  if (parsed.typ === AUFGABEN_TYPEN.FACHLICHE_PRUEFUNG && !meldung.fallId) {
+    const err = new Error('Die fachliche Prüfung erfolgt am Fall. Ordnen Sie die Meldung zuerst einem Fall zu.')
+    err.status = 409
     throw err
   }
 

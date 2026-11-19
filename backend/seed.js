@@ -101,7 +101,7 @@ async function main() {
           },
         ],
       } },
-    { meldungsNr: 'MEL-017', meldungsTyp: 'VORFALL_INTERN', status: 'IN_PROGRESS',
+    { meldungsNr: 'MEL-017', meldungsTyp: 'VORFALL_INTERN', status: 'SUBMITTED',
       sachverhalt: 'Disziplinarverstoß: unerlaubter Besitz Mobiltelefon',
       ervRelevant: false, prioritaet: 0, empfaengerTyp: 'INTERN_ABTEILUNG',
       gefangeneId: gefMap['GEF-001'].id, zustaendigId: bdMap['AVD-01'].id,
@@ -124,7 +124,7 @@ async function main() {
         tatort: 'JVA Billwerder',
         beweismittelGesichert: 'nein',
       } },
-    { meldungsNr: 'MEL-015', meldungsTyp: 'STRAFANZEIGE', status: 'ARCHIVED',
+    { meldungsNr: 'MEL-015', meldungsTyp: 'STRAFANZEIGE', status: 'SUBMITTED',
       sachverhalt: 'Diebstahl in der Anstaltsküche',
       ervRelevant: true, prioritaet: 0,
       empfaenger: 'Staatsanwaltschaft Hamburg', empfaengerTyp: 'STAATSANWALTSCHAFT',
@@ -196,7 +196,7 @@ async function main() {
   for (const d of meldungenData) {
     await prisma.meldung.upsert({
       where: { meldungsNr: d.meldungsNr },
-      update: { metadaten: d.metadaten, sachverhalt: d.sachverhalt },
+      update: { metadaten: d.metadaten, sachverhalt: d.sachverhalt, status: d.status },
       create: d,
     })
   }

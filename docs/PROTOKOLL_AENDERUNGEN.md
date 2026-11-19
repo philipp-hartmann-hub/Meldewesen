@@ -9,6 +9,20 @@ Chronologisches Änderungsprotokoll zum Prototyp. Ergänzt Umsetzungsdokumente (
 
 ## Einträge (neueste zuerst)
 
+### 2026-11-19 – Anzeige folgt dem Fall-Pfad
+
+- **Umfang:** Schrittleiste, Banner und Einreichungsdialog nennen dieselbe Folge: Entwurf → Eingereicht → Zentrale bündelt → DGL prüft → SL → AL/VAL entscheidet → eGPA/ERV → Abschluss. Der aktive Schritt kommt aus Meldungs- und Fallstatus. Eine DGL-Rückgabe markiert „DGL prüft“. Zeugenbefragung steht nicht mehr in der Leiste. An einer Meldung ohne Fall gibt es keine Aktionen für fachliche Prüfung, beBPo, eGPA oder Abschluss, sondern den Hinweis „Wartet auf Bündelung durch die Zentrale“.
+- **Code:** `meldungen.js`, `faelle.js`, `ProzessSchritte.jsx`, `MeldungAktionen.jsx`, `MeldungFallBanner.jsx`, `EinreichungFolgeaktionenDialog.jsx`
+- **Dokumentation:** dieser Eintrag; Backend-Sperre im Eintrag darunter
+- **Commit:** ausstehend
+
+### 2026-11-19 – Kein Einzelpfad ohne Fall
+
+- **Umfang:** Jede eingereichte Meldung ohne Fall geht an die Arbeitskoordination zur Zuordnung („MEL-xxx einem Fall zuordnen“). Fachliche Prüfung, beBPo, eGPA und Abschluss gibt es an der Einzelmeldung nicht mehr. `IN_PROGRESS` und `ARCHIVED` setzt nur der Fall. Versand und Veraktung ohne Fall antworten mit 409. MEL-015 und MEL-017 stehen im Seed auf „Eingereicht“.
+- **Code:** `arbeitskorbService.js`, `meldungStatusUebergaenge.js`, `routes/index.js`, `seed.js`
+- **Dokumentation:** dieser Eintrag
+- **Commit:** ausstehend
+
 ### 2026-11-19 – Schrittleiste steuert die Arbeitskörbe
 
 - **Umfang:** Nach dem Absenden arbeitet die Meldung die angezeigten Schritte der Reihe nach ab. Der jeweils offene Schritt liegt als Aufgabe im Arbeitskorb der zuständigen Rolle: Zeugenbefragung bei den Zeugen, danach fachliche Prüfung, beBPo, eGPA und Abschluss bei VAL und Anstaltsleitung. Die Schrittleiste markiert denselben offenen Schritt. Die Zentrale bündelt weiter nur Fälle, nicht den nächsten Einzelschritt.

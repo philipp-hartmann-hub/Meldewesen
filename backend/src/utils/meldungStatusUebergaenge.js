@@ -1,9 +1,8 @@
 /**
  * Erlaubte Statuswechsel einer Einzelmeldung ohne Fall.
- * TODO Soll: Einzelpfad ohne Fall fachlich klären (PROZESS_SOLL_UND_STAND Kap. 9)
- *
- * Sobald eine Meldung einem Fall zugeordnet ist, setzt fallService.js
- * IN_PROGRESS, FORWARDED und ARCHIVED. Dieser Endpunkt darf das dann nicht mehr.
+ * Es gibt keinen Einzelpfad ohne Fall: jede eingereichte Meldung läuft
+ * über die Zentrale und wird einem Fall zugeordnet.
+ * IN_PROGRESS und ARCHIVED setzt ausschließlich fallService.js.
  */
 
 const ALLE_ROLLEN = [
@@ -20,7 +19,6 @@ const ALLE_ROLLEN = [
 ]
 
 const LEITUNG = ['val', 'anstaltsleitung']
-const ABSCHLUSS = ['val', 'anstaltsleitung', 'admin']
 const WEITERLEITEN = ALLE_ROLLEN.filter(rolle => rolle !== 'sonderdienst')
 
 const STATUS_LABEL = {
@@ -37,21 +35,16 @@ export const MELDUNG_STATUS_UEBERGAENGE = {
     SUBMITTED: ALLE_ROLLEN,
   },
   SUBMITTED: {
-    IN_PROGRESS: LEITUNG,
     FORWARDED: WEITERLEITEN,
     DRAFT: LEITUNG,
-    ARCHIVED: ABSCHLUSS,
   },
   IN_PROGRESS: {
     FORWARDED: WEITERLEITEN,
     DRAFT: LEITUNG,
-    ARCHIVED: ABSCHLUSS,
   },
   FORWARDED: {
-    IN_PROGRESS: LEITUNG,
     FORWARDED: WEITERLEITEN,
     DRAFT: LEITUNG,
-    ARCHIVED: ABSCHLUSS,
   },
   ARCHIVED: {},
 }

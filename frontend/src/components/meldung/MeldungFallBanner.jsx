@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom'
 import FallStatusBadge from '../shared/FallStatusBadge'
-import { istFallErvPfad } from '../../utils/faelle'
+import { istFallErvPfad, MELDUNG_PROZESS_SCHRITTE } from '../../utils/faelle'
+
+function Prozessfolge() {
+  return (
+    <p className="text-xs text-jhh-text-light mt-2 m-0">
+      {MELDUNG_PROZESS_SCHRITTE.map(s => s.label).join(' → ')}
+    </p>
+  )
+}
 
 /**
  * Hinweis zur Fall-Bündelung auf der Meldungsdetailseite.
@@ -37,26 +45,19 @@ export default function MeldungFallBanner({ meldung }) {
             Fall abgeschlossen – diese Meldung ist archiviert.
           </p>
         )}
+        <Prozessfolge />
       </div>
     )
   }
 
-  if (meldungStatus === 'SUBMITTED') {
+  if (['SUBMITTED', 'FORWARDED', 'IN_PROGRESS'].includes(meldungStatus)) {
     return (
       <div className="mb-4 p-4 rounded border border-jhh-border bg-jhh-bg text-sm" role="status">
-        <p className="font-semibold text-jhh-primary m-0 mb-1">⏳ Wartet auf Fall-Bündelung</p>
+        <p className="font-semibold text-jhh-primary m-0 mb-1">Wartet auf Bündelung durch die Zentrale</p>
         <p className="m-0 text-jhh-text-light">
-          Die Zentrale (Arbeitskoordination) bündelt eingereichte Einzelmeldungen zum gleichen
-          Vorfall, bevor die Dienstgruppenleitung prüft.
+          Die Zentrale bündelt diese Einzelmeldung, danach folgen DGL prüft, SL und AL/VAL entscheidet.
         </p>
-      </div>
-    )
-  }
-
-  if (meldungStatus === 'FORWARDED' && !fall) {
-    return (
-      <div className="mb-4 p-3 rounded border border-jhh-border bg-jhh-bg text-sm text-jhh-text-light" role="status">
-        Status <strong>Weitergeleitet</strong> – Fall-Zuordnung wird geladen …
+        <Prozessfolge />
       </div>
     )
   }

@@ -19,11 +19,13 @@ export default function ProzessSchritte({ meldung, sticky = false }) {
           <li key={s.id} className="flex items-center flex-shrink-0">
             <span
               className={`inline-flex items-center whitespace-nowrap px-3 py-1.5 text-xs font-bold tracking-wide uppercase border-2 ${
-                s.erledigt
-                  ? 'bg-green-50 text-green-700 border-green-400'
-                  : s.aktiv
-                    ? 'bg-white text-jhh-primary border-jhh-primary'
-                    : 'bg-jhh-bg text-jhh-text-light border-jhh-border'
+                s.rueckgabe
+                  ? 'bg-orange-50 text-jhh-warning border-jhh-warning'
+                  : s.erledigt
+                    ? 'bg-green-50 text-green-700 border-green-400'
+                    : s.aktiv
+                      ? 'bg-white text-jhh-primary border-jhh-primary'
+                      : 'bg-jhh-bg text-jhh-text-light border-jhh-border'
               }`}
               aria-current={s.aktiv ? 'step' : undefined}
             >
@@ -33,6 +35,7 @@ export default function ProzessSchritte({ meldung, sticky = false }) {
                 <span className="mr-1.5" aria-hidden="true">{s.icon}</span>
               ) : null}
               {s.label}
+              {s.rueckgabe ? ' · Rückgabe' : ''}
             </span>
             {i < schritte.length - 1 && (
               <span className="text-jhh-text-light px-1" aria-hidden="true">→</span>

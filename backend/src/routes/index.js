@@ -877,6 +877,12 @@ router.post('/meldungen/:id/verakten', async (req, res, next) => {
       include: { xJustizVersand: true, fall: true, gefangene: true },
     })
     if (!meldung) return res.status(404).json({ error: 'Meldung nicht gefunden', message: 'Meldung nicht gefunden' })
+    if (!meldung.fallId) {
+      return res.status(409).json({
+        error: 'Versand und Veraktung erfolgen am Fall',
+        message: 'Versand und Veraktung erfolgen am Fall',
+      })
+    }
     const fallHinweisVeraktung = meldungWirdAmFallBearbeitet(meldung)
     if (fallHinweisVeraktung) {
       return res.status(409).json({ error: fallHinweisVeraktung, message: fallHinweisVeraktung })
@@ -922,6 +928,12 @@ router.post('/meldungen/:id/xjustiz-versand', async (req, res, next) => {
       include: { fall: true, gefangene: true, veraktungen: true },
     })
     if (!meldung) return res.status(404).json({ error: 'Meldung nicht gefunden', message: 'Meldung nicht gefunden' })
+    if (!meldung.fallId) {
+      return res.status(409).json({
+        error: 'Versand und Veraktung erfolgen am Fall',
+        message: 'Versand und Veraktung erfolgen am Fall',
+      })
+    }
     const fallHinweisVersand = meldungWirdAmFallBearbeitet(meldung)
     if (fallHinweisVersand) {
       return res.status(409).json({ error: fallHinweisVersand, message: fallHinweisVersand })

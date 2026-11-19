@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { berechneZeugenFolgeaktionenPreview } from '../../utils/zeugenFolgeaktionenPreview'
+import { MELDUNG_PROZESS_SCHRITTE } from '../../utils/faelle'
 
 /**
  * Bestätigung vor Einreichung: beschreibt den weiteren Prozess (Status, Prüfung, Zeugen-Mock).
@@ -35,15 +36,23 @@ export default function EinreichungFolgeaktionenDialog({
       || preview.gruppenAufgaben?.length > 0
       || preview.stationWeiterleitungen.length > 0)
 
-  const prozessSchritte = [
-    { nr: 1, label: 'Zentrale bündelt Einzelmeldungen', detail: 'Arbeitskoordination fasst alle aVD-Perspektiven zum gleichen Vorfall zusammen' },
-    { nr: 2, label: 'Dienstgruppenleitung prüft Qualität', detail: 'Fachliche Kriterien und inhaltliche Stimmigkeit im gebündelten Fall' },
-    { nr: 3, label: 'Stationsleitung (Fallmeldung)', detail: 'SL leitet die gebündelte Fallmeldung an AL/VAL weiter' },
-    { nr: 4, label: 'AL/VAL entscheidet Meldepflicht', detail: 'Meldepflichtig = ERV-pflichtig; sonst eGPA am Fall ohne beBPo' },
-    { nr: 5, label: 'ERV / Abschluss am Fall', detail: ervRelevant
-      ? 'Nach Entscheid: versandfähig → beBPo → eGPA am Fall (AL/VAL)'
-      : 'Bei meldepflichtigem Vorfall: versandfähig → beBPo → eGPA; sonst direkt eGPA' },
-  ]
+  const details = {
+    draft: 'Die Meldung wird erfasst und kann noch bearbeitet werden.',
+    submitted: 'Die Meldung erhält den Status Eingereicht und kann nicht mehr wie ein Entwurf bearbeitet werden.',
+    buendeln: 'Arbeitskoordination fasst alle aVD-Perspektiven zum gleichen Vorfall zusammen.',
+    dgl: 'Fachliche Kriterien und inhaltliche Stimmigkeit im gebündelten Fall.',
+    sl: 'SL leitet die gebündelte Fallmeldung an AL/VAL weiter.',
+    al: 'Meldepflichtig = ERV-pflichtig; sonst eGPA am Fall ohne beBPo.',
+    erv: ervRelevant
+      ? 'Nach Entscheid: versandfähig → beBPo → eGPA am Fall (AL/VAL).'
+      : 'Bei meldepflichtigem Vorfall: versandfähig → beBPo → eGPA; sonst direkt eGPA.',
+    abschluss: 'Der Fall wird abgeschlossen.',
+  }
+  const prozessSchritte = MELDUNG_PROZESS_SCHRITTE.map((s, index) => ({
+    nr: index + 1,
+    label: s.label,
+    detail: details[s.id],
+  }))
 
   return (
     <div

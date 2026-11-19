@@ -1,6 +1,7 @@
 // Hilfsfunktionen Meldewesen (SLA, Typen, Prozess)
 
 import { alleZeugenaussagenVollstaendig } from './zeugenVollstaendigkeit.js'
+import { aktiverMeldungsSchrittId, MELDUNG_PROZESS_SCHRITTE } from './faelle.js'
 
 // SLA-Arbeitswerte – Prototyp-Annahmen für Workshop-Test
 // ⚠ ALLE Werte müssen mit JVA-Mitarbeitenden verifiziert werden!
@@ -283,61 +284,23 @@ export function istErvOffen(meldung) {
   return meldung.ervRelevant === true && !['ARCHIVED', 'DRAFT'].includes(meldung.status)
 }
 
-/** Strafanzeige mit erfassten Zeugen → eigener Prozessschritt „Zeugenbefragung“ */
+/** Strafanzeige mit erfassten Zeugen. Die Schrittleiste zeigt diesen Schritt nicht mehr (Soll D1). */
 export function hatZeugenProzessschritt(meldung) {
   if (meldung?.meldungsTyp !== 'STRAFANZEIGE') return false
   const zeugen = meldung?.metadaten?.zeugen
   return Array.isArray(zeugen) && zeugen.length > 0
 }
 
-/** Prozessschritte laut Lastenheft / Prozesslandkarte */
+/** Fall-Pfad: Entwurf → Eingereicht → Zentrale → DGL → SL → AL/VAL → eGPA/ERV → Abschluss. */
 export function getProzessSchritte(meldung) {
-  const hatBepo = meldung.xJustizVersand?.some(v => v.status === 'VERSENDET' || v.status === 'BESTAETIGT')
-  const hatEgpa = meldung.veraktungen?.some(v => v.status === 'UEBERMITTELT')
-  const erv = meldung.ervRelevant
-  const mitZeugen = hatZeugenProzessschritt(meldung)
-  const zeugenVollstaendig = alleZeugenaussagenVollstaendig(meldung?.metadaten)
+  const aktivId = aktiverMeldungsSchrittId(meldung)
+  const aktiv = MELDUNG_PROZESS_SCHRITTE.findIndex(s => s.id === aktivId)
+  const rueckgabe = meldung?.status === 'DRAFT' && Boolean(meldung?.metadaten?.rueckgabeDgl)
 
-  const schritte = [
-    { id: 'draft', label: 'Entwurf' },
-    { id: 'submitted', label: 'Eingereicht' },
-  ]
-
-  if (mitZeugen) {
-    schritte.push({ id: 'zeugen', label: 'Zeugenbefragung' })
-  }
-
-  schritte.push({ id: 'bearbeitung', label: 'Fachliche Prüfung', icon: '🔍' })
-
-  if (erv) {
-    schritte.push({ id: 'bepo', label: 'Versand (beBPo)' })
-    schritte.push({ id: 'egpa', label: 'eGPA-Veraktung' })
-  }
-
-  schritte.push({ id: 'archiv', label: 'Abschluss' })
-
-  const idx = id => schritte.findIndex(s => s.id === id)
-
-  let aktiv = idx('draft')
-  if (meldung.status === 'ARCHIVED') {
-    aktiv = schritte.length - 1
-  } else if (meldung.status === 'DRAFT') {
-    aktiv = idx('draft')
-  } else if (mitZeugen && !zeugenVollstaendig) {
-    aktiv = idx('zeugen')
-  } else if (meldung.status !== 'IN_PROGRESS' && !hatBepo && !hatEgpa) {
-    aktiv = idx('bearbeitung')
-  } else if (erv && !hatBepo) {
-    aktiv = idx('bepo')
-  } else if (erv && !hatEgpa) {
-    aktiv = idx('egpa')
-  } else {
-    aktiv = idx('archiv')
-  }
-
-  return schritte.map((s, i) => ({
+  return MELDUNG_PROZESS_SCHRITTE.map((s, i) => ({
     ...s,
     erledigt: i < aktiv,
     aktiv: i === aktiv,
+    rueckgabe: rueckgabe && s.id === 'dgl',
   }))
 }
